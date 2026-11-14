@@ -20,6 +20,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ball photo storage
+    |--------------------------------------------------------------------------
+    |
+    | Disk that uploaded ball photos are written to. Locally this is the
+    | "public" disk (run `php artisan storage:link` once). On Laravel Cloud the
+    | filesystem is ephemeral, so point this at a public Object Storage bucket
+    | attached to the environment with the disk name "public".
+    |
+    */
+
+    'image_disk' => env('BALLPIT_IMAGE_DISK', 'public'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Order rules
     |--------------------------------------------------------------------------
     */

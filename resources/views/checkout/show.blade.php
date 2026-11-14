@@ -100,11 +100,7 @@
                     <ul class="mt-4 divide-y divide-pit-100">
                         @foreach ($lines as $line)
                             <li class="flex items-start gap-3 py-3">
-                                <span
-                                    class="mt-0.5 size-7 shrink-0 rounded-full ring-1 ring-inset ring-black/10"
-                                    style="background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.72) 0%, {{ $line['ballType']->color_hex }} 38%, rgba(0,0,0,.14) 100%);"
-                                    aria-hidden="true"
-                                ></span>
+                                <x-ball-swatch :ball-type="$line['ballType']" class="mt-0.5 size-7" />
 
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate text-sm font-medium">{{ $line['ballType']->name }}</p>

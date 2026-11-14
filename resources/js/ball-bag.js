@@ -108,6 +108,98 @@ function allocateRenderedCounts(mix, budget) {
 }
 
 /**
+ * Loaded ball photos, keyed by URL and shared across bag instances.
+ *
+ * @type {Map<string, {element: HTMLImageElement, loaded: boolean, failed: boolean}>}
+ */
+const imageCache = new Map();
+
+/**
+ * Begin loading a ball photo, calling back once it is ready to draw.
+ *
+ * Returns immediately with the cache entry so callers can fall back to the
+ * flat colour until the photo arrives.
+ *
+ * @param {string} url
+ * @param {() => void} onReady
+ */
+function loadImage(url, onReady) {
+    const cached = imageCache.get(url);
+
+    if (cached) {
+        if (!cached.loaded && !cached.failed) {
+            cached.element.addEventListener('load', onReady, { once: true });
+        }
+
+        return cached;
+    }
+
+    const entry = { element: new Image(), loaded: false, failed: false };
+
+    entry.element.addEventListener('load', () => {
+        entry.loaded = true;
+        onReady();
+    });
+
+    entry.element.addEventListener('error', () => {
+        entry.failed = true;
+    });
+
+    entry.element.src = url;
+    imageCache.set(url, entry);
+
+    return entry;
+}
+
+/**
+ * Pre-render a ball photo into a round sprite.
+ *
+ * The stored photo is a plain square, so the circle is applied here rather
+ * than baked into the file.
+ *
+ * @param {HTMLImageElement} image
+ * @param {number} radius
+ * @param {number} dpr
+ * @returns {HTMLCanvasElement}
+ */
+function createPhotoSprite(image, radius, dpr) {
+    const padding = 2;
+    const size = Math.ceil((radius + padding) * 2 * dpr);
+    const sprite = document.createElement('canvas');
+    sprite.width = size;
+    sprite.height = size;
+
+    const ctx = sprite.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const center = radius + padding;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Cover-fit the photo inside the circle.
+    const natural = Math.min(image.naturalWidth || 1, image.naturalHeight || 1);
+    const drawScale = (radius * 2) / natural;
+    const width = (image.naturalWidth || 1) * drawScale;
+    const height = (image.naturalHeight || 1) * drawScale;
+
+    ctx.drawImage(image, center - width / 2, center - height / 2, width, height);
+    ctx.restore();
+
+    // Match the shading the generated balls get, so a mix of photographed and
+    // flat-colour balls still reads as one bag.
+    ctx.beginPath();
+    ctx.arc(center, center, radius - 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    return sprite;
+}
+
+/**
  * Pre-render a glossy plastic ball to an offscreen canvas.
  *
  * Drawing 170 cached sprites per frame is far cheaper than building 170 radial
@@ -184,11 +276,11 @@ export function createBallBag(canvas, options = {}) {
     const onStats = options.onStats ?? (() => {});
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    /** @type {Array<{x: number, y: number, vx: number, vy: number, color: string, typeId: string, spawnAt: number, removingAt: number|null}>} */
+    /** @type {Array<{x: number, y: number, vx: number, vy: number, color: string, styleKey: string, typeId: string, spawnAt: number, removingAt: number|null}>} */
     let balls = [];
     /** @type {Map<string, HTMLCanvasElement>} */
     let sprites = new Map();
-    /** @type {Array<{id: string, color: string, quantity: number}>} */
+    /** @type {Array<{id: string, color: string, image?: string|null, quantity: number}>} */
     let currentMix = [];
 
     let width = 0;
@@ -251,13 +343,41 @@ export function createBallBag(canvas, options = {}) {
 
     }
 
+    /**
+     * The sprite cache key for a mix entry: its photo when it has one, and
+     * otherwise its flat colour.
+     *
+     * @param {{color: string, image?: string|null}} entry
+     */
+    function styleKeyFor(entry) {
+        return entry.image ? `photo:${entry.image}` : `color:${entry.color}`;
+    }
+
     function rebuildSprites() {
         sprites = new Map();
 
         for (const entry of currentMix) {
-            if (!sprites.has(entry.color)) {
-                sprites.set(entry.color, createBallSprite(entry.color, radius, dpr));
+            const key = styleKeyFor(entry);
+
+            if (sprites.has(key)) {
+                continue;
             }
+
+            if (entry.image) {
+                // Repaint once the photo lands; until then, show the colour.
+                const cached = loadImage(entry.image, () => {
+                    rebuildSprites();
+                    ensureRunning();
+                });
+
+                if (cached.loaded) {
+                    sprites.set(key, createPhotoSprite(cached.element, radius, dpr));
+
+                    continue;
+                }
+            }
+
+            sprites.set(key, createBallSprite(entry.color, radius, dpr));
         }
     }
 
@@ -315,14 +435,18 @@ export function createBallBag(canvas, options = {}) {
 
         rebuildSprites();
 
-        const colors = new Map(currentMix.map((entry) => [entry.id, entry.color]));
+        const styles = new Map(
+            currentMix.map((entry) => [entry.id, { color: entry.color, styleKey: styleKeyFor(entry) }]),
+        );
 
-        // A ball type may be recoloured between renders; keep live balls in step.
+        // A ball type may be recoloured or given a photo between renders;
+        // keep the balls already in the bag in step.
         for (const ball of balls) {
-            const color = colors.get(ball.typeId);
+            const style = styles.get(ball.typeId);
 
-            if (color !== undefined && ball.color !== color) {
-                ball.color = color;
+            if (style) {
+                ball.color = style.color;
+                ball.styleKey = style.styleKey;
             }
         }
 
@@ -377,7 +501,7 @@ export function createBallBag(canvas, options = {}) {
             const interval = Math.min(Math.max(POUR_DURATION / toSpawn.length, 0.005), 0.05);
 
             for (const typeId of toSpawn) {
-                spawn(typeId, colors.get(typeId), interval);
+                spawn(typeId, styles.get(typeId), interval);
             }
         }
 
@@ -403,7 +527,7 @@ export function createBallBag(canvas, options = {}) {
         ball.removingAt = clock;
     }
 
-    function spawn(typeId, color, interval) {
+    function spawn(typeId, style, interval) {
         // Queue each ball one interval behind the last, so they pour in rather
         // than appearing all at once.
         const spawnAt = Math.max(clock, spawnCursor + interval);
@@ -413,7 +537,8 @@ export function createBallBag(canvas, options = {}) {
 
         balls.push({
             typeId,
-            color,
+            color: style.color,
+            styleKey: style.styleKey,
             x: bag.centerX + (Math.random() * 2 - 1) * opening,
             y: -radius - Math.random() * height * 0.25,
             vx: (Math.random() * 2 - 1) * 40,
@@ -608,7 +733,7 @@ export function createBallBag(canvas, options = {}) {
                 continue;
             }
 
-            const sprite = sprites.get(ball.color);
+            const sprite = sprites.get(ball.styleKey);
 
             if (!sprite) {
                 continue;

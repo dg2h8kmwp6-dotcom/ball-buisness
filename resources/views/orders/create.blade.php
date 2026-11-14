@@ -38,23 +38,20 @@
                 </div>
 
                 <ul class="mt-4 space-y-3">
-                    @foreach ($ballTypes as $ballType)
+                    @forelse ($ballTypes as $ballType)
                         <li
                             data-ball-row
                             data-ball-id="{{ $ballType->id }}"
                             data-ball-name="{{ $ballType->name }}"
                             data-color="{{ $ballType->color_hex }}"
+                            data-image="{{ $ballType->imageUrl() }}"
                             data-price-cents="{{ $ballType->price_per_ball_cents }}"
                             data-step="{{ $ballType->quantity_step }}"
                             data-selected="false"
                             class="group rounded-2xl border border-pit-200 bg-white p-4 shadow-sm transition data-[selected=true]:border-pit-400 data-[selected=true]:ring-2 data-[selected=true]:ring-pit-500/25"
                         >
                             <div class="flex flex-wrap items-start gap-4">
-                                <span
-                                    class="mt-0.5 size-10 shrink-0 rounded-full ring-1 ring-inset ring-black/10"
-                                    style="background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.72) 0%, {{ $ballType->color_hex }} 38%, rgba(0,0,0,.14) 100%);"
-                                    aria-hidden="true"
-                                ></span>
+                                <x-ball-swatch :ball-type="$ballType" class="mt-0.5 size-10" />
 
                                 <div class="min-w-48 flex-1">
                                     <h3 class="font-semibold">{{ $ballType->name }}</h3>
@@ -131,7 +128,20 @@
                                 <p class="mt-2 text-sm text-red-700">{{ $message }}</p>
                             @enderror
                         </li>
-                    @endforeach
+                    @empty
+                        <li class="rounded-2xl border border-dashed border-pit-300 bg-white p-8 text-center">
+                            <p class="font-semibold">No ball colours are available yet.</p>
+                            <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-pit-700">
+                                The catalogue is empty, so there is nothing to order. If you run this shop,
+                                load the default colours with
+                                <code class="rounded bg-pit-100 px-1 py-0.5 font-mono text-xs">php artisan ballpit:sync-ball-types</code>
+                                or add them in the admin area.
+                            </p>
+                            <a href="mailto:{{ config('ballpit.support_email') }}" class="mt-4 inline-block text-sm font-medium text-pit-700 underline-offset-4 hover:underline">
+                                Contact us instead
+                            </a>
+                        </li>
+                    @endforelse
                 </ul>
             </div>
 

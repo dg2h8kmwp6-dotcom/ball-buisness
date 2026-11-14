@@ -117,10 +117,65 @@ Every order is a bespoke mix, so there is no fixed catalogue of Stripe Prices.
 `StripeCheckout` sends each line as inline `price_data`, with the ball colour
 in the line description.
 
+## Admin area
+
+Catalogue management lives at `/admin`, gated by an `is_admin` flag on the user.
+
+```sh
+php artisan ballpit:make-admin you@example.com
+```
+
+That grants admin access to an existing account, or creates one and prints a
+generated password. Then sign in at `/admin/login` to add ball types, edit
+prices, reorder colours, hide a colour from the shop, and upload photos.
+
+### Ball photos
+
+Each ball type has a flat `color_hex` and an optional photo. Upload a photo of
+the real ball and frame it with the circular cropper: drag to pan, scroll or
+drag the slider to zoom. The browser posts the crop rectangle in source-image
+pixels and the server does the real crop with **GD**, which ships with PHP — no
+image library dependency.
+
+Photos are stored as 512px square WebP. The circle is applied at display time
+(CSS on the storefront, a canvas clip in the bag animation) rather than baked
+into the file, so one file works everywhere. A ball type with a photo uses it
+for its swatch *and* as the ball texture inside the bag animation; without one
+it falls back to the generated gloss gradient.
+
+Where photos are written comes from `BALLPIT_IMAGE_DISK` (default `public`).
+Run `php artisan storage:link` once locally.
+
+> **On Laravel Cloud the filesystem is ephemeral** — anything written to local
+> disk disappears on the next deploy. Attach a Cloud Object Storage bucket as a
+> **public** disk named `public`, and install the S3 adapter:
+> `composer require league/flysystem-aws-s3-v3 "^3.0"`.
+
+Ball types that appear in past orders can be hidden but not deleted, so order
+history stays intact.
+
+### Seeding the catalogue
+
+The 12 defaults live in `database/seeders/BallTypeSeeder.php`. Load them with:
+
+```sh
+php artisan ballpit:sync-ball-types
+```
+
+It only inserts colours that are missing and never overwrites an existing row,
+so it is safe in a deploy command and your admin edits survive redeploys. Use
+`--overwrite` to deliberately reset rows back to the defaults.
+
+A Laravel Cloud deploy command that keeps the catalogue populated:
+
+```sh
+php artisan migrate --force && php artisan ballpit:sync-ball-types
+```
+
 ## Tests
 
 ```sh
-php artisan test        # 31 PHP tests: cart, validation, checkout, webhooks
+php artisan test        # 58 PHP tests: cart, checkout, webhooks, admin, photos
 npm run test:bag        # the bag animation, headless
 vendor/bin/pint         # formatting
 ```
@@ -160,6 +215,7 @@ Other behaviour worth knowing:
 | --- | --- |
 | Name, tagline, support email | `config/ballpit.php` or `BALLPIT_*` in `.env` |
 | Logo | `resources/views/components/logo.blade.php` |
+| Ball colours and photos | `/admin/ball-types` |
 | Colour palette | the `--color-pit-*` tokens in `resources/css/app.css` |
 | Hero illustration | `resources/views/landing.blade.php` |
 
@@ -169,7 +225,8 @@ Deliberately out of scope for this scaffold:
 
 - PayPal is designed but not built — see [PayPal](#paypal--decided-not-yet-built)
 - No confirmation email yet (see the `TODO` in `FulfillOrderOnPayment`)
-- No admin view of orders, and no stock or lead-time tracking
+- The admin area covers the catalogue only — no order management yet
+- No stock or lead-time tracking
 - No volume discounts — pricing is flat per ball, per type
 - Shipping is a flat fee from config, not calculated by weight or destination
 - Guest checkout only; no customer accounts or order history

@@ -84,6 +84,7 @@ export function initOrderBuilder(root) {
             id: row.dataset.ballId,
             name: row.dataset.ballName,
             color: row.dataset.color,
+            image: row.dataset.image || null,
             priceCents: Number(row.dataset.priceCents || 0),
         };
     }
@@ -133,6 +134,7 @@ export function initOrderBuilder(root) {
             selected.map((state) => ({
                 id: state.id,
                 color: state.color,
+                image: state.image,
                 quantity: state.quantity,
             })),
         );
@@ -166,9 +168,18 @@ export function initOrderBuilder(root) {
             const item = document.createElement('li');
             item.className = 'flex items-center gap-2 text-sm';
 
-            const swatch = document.createElement('span');
-            swatch.className = 'size-3 shrink-0 rounded-full ring-1 ring-black/15';
-            swatch.style.backgroundColor = state.color;
+            let swatch;
+
+            if (state.image) {
+                swatch = document.createElement('img');
+                swatch.src = state.image;
+                swatch.alt = '';
+                swatch.className = 'size-3.5 shrink-0 rounded-full object-cover ring-1 ring-black/15';
+            } else {
+                swatch = document.createElement('span');
+                swatch.className = 'size-3 shrink-0 rounded-full ring-1 ring-black/15';
+                swatch.style.backgroundColor = state.color;
+            }
 
             const label = document.createElement('span');
             label.className = 'flex-1 truncate text-pit-800';
@@ -242,6 +253,11 @@ export function initOrderBuilder(root) {
         rows
             .map(readRow)
             .filter((state) => state.quantity > 0)
-            .map((state) => ({ id: state.id, color: state.color, quantity: state.quantity })),
+            .map((state) => ({
+                id: state.id,
+                color: state.color,
+                image: state.image,
+                quantity: state.quantity,
+            })),
     );
 }
