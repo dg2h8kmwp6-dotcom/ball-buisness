@@ -10,7 +10,8 @@ Branding (name, logo, palette, copy) is placeholder — see
 
 - Laravel 13 / PHP 8.4, SQLite by default
 - Blade + Tailwind CSS 4, bundled with Vite
-- [Laravel Cashier (Stripe)](https://laravel.com/docs/billing) for payments
+- [Laravel Cashier (Stripe)](https://laravel.com/docs/billing) for card payments
+- PayPal Orders v2, called directly over HTTP (no SDK)
 - A dependency-free canvas animation for the bag
 
 ## Getting started
@@ -38,9 +39,9 @@ them.
 | 2 | `GET /order` | Pick colours and quantities; the bag animates the mix |
 | 3 | `POST /order` | Selection is validated and stored in the session cart |
 | 4 | `GET /checkout` | Review the order, collect name and email |
-| 5 | `POST /checkout` | A `pending` order is written, then Stripe Checkout opens |
-| 6 | `GET /checkout/success` | Confirms payment and empties the cart |
-| 7 | `POST /stripe/webhook` | Marks the order paid — the source of truth |
+| 5 | `POST /checkout` | A `pending` order is written, then the chosen provider opens |
+| 6 | `GET /checkout/success` or `/checkout/paypal/return` | Confirms payment and empties the cart |
+| 7 | `POST /stripe/webhook` or `/paypal/webhook` | Marks the order paid — the source of truth |
 
 Orders snapshot the ball name, colour, and unit price at the time of purchase,
 so later catalogue edits never rewrite past orders.
@@ -76,46 +77,81 @@ when `STRIPE_WEBHOOK_SECRET` is set. `App\Listeners\FulfillOrderOnPayment`
 handles the `checkout.session.*` events; its `TODO` marks where the
 confirmation email and warehouse notification belong.
 
-### PayPal — decided, not yet built
+### PayPal
 
-**Decision: a direct PayPal integration alongside Stripe.** The store runs on a
-US Stripe account, which rules out the simpler routes.
+PayPal runs as a **direct integration against the PayPal Orders v2 API**, using
+your own PayPal account, offered beside the Stripe card checkout. The customer
+picks a button at checkout and is redirected to whichever provider they chose.
 
-Background, verified against Stripe's docs on 2026-11-14:
+```dotenv
+PAYPAL_MODE=sandbox          # "live" in production
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=
+```
 
-- **PayPal processed by Stripe** is only available to Stripe accounts based in
+Credentials come from the
+[PayPal developer dashboard](https://developer.paypal.com/dashboard/applications/sandbox).
+Create a **webhook** subscribed to `PAYMENT.CAPTURE.COMPLETED`,
+`PAYMENT.CAPTURE.DENIED` and `CHECKOUT.ORDER.APPROVED`, pointing at
+`https://your-domain/paypal/webhook`, and put its ID in `PAYPAL_WEBHOOK_ID`.
+
+Each provider appears at checkout only when it is configured, so you can run
+card-only, PayPal-only, or both.
+
+#### The flow
+
+1. `POST /checkout` writes a `pending` order tagged with the chosen provider.
+2. A PayPal order is created with `intent: CAPTURE`, the mix as
+   `purchase_units[].items`, and `payment_source.paypal.experience_context`
+   carrying the return and cancel URLs. Supplying the payment source up front
+   means no separate "confirm" call is needed.
+3. The customer is redirected to the `payer-action` link.
+4. `GET /checkout/paypal/return` captures the payment so the customer gets an
+   immediate answer.
+5. `POST /paypal/webhook` is the source of truth. Every webhook is verified
+   through PayPal's `verify-webhook-signature` endpoint and rejected with a
+   403 if it does not check out.
+
+Two details worth knowing:
+
+- **Idempotency.** Create and capture both send a `PayPal-Request-Id` derived
+  from the order reference, so a double submit or a retry cannot charge twice.
+- **A missed return is still fulfilled.** If the customer approves and then
+  closes the tab, `CHECKOUT.ORDER.APPROVED` arrives by webhook and the capture
+  happens server-side.
+
+#### Why not PayPal through Stripe?
+
+Checked against Stripe's docs on 2026-11-14, for a **US Stripe account**:
+
+- **PayPal processed by Stripe** is restricted to Stripe accounts based in
   [supported European countries](https://docs.stripe.com/payments/paypal#paypal-business-locations)
-  (EEA, UK, Switzerland). Customers may be anywhere, but the *merchant* account
-  cannot be in the US. Not an option here.
+  (EEA, UK, Switzerland). Customers may be anywhere; the merchant account may
+  not be in the US.
 - **Stripe's [PayPal custom payment method](https://docs.stripe.com/payments/payment-methods/custom-payment-methods/paypal)**
-  is in preview and gated: it needs access from a Stripe account manager, and
-  even once granted you still "build, host, and maintain the integration
-  between Checkout and PayPal" yourself. Same work as going direct, plus a
-  gatekeeper.
+  is a gated preview requiring access from a Stripe account manager, and even
+  then you "build, host, and maintain the integration between Checkout and
+  PayPal" yourself — the same work as going direct, plus a gatekeeper.
 
-So PayPal will be wired up directly against the
-[PayPal Orders v2 API](https://developer.paypal.com/docs/api/orders/v2/), using
-the merchant's own PayPal account, offered beside the existing Stripe card
-checkout. Planned shape:
+If you ever move to a European Stripe entity, enabling PayPal in the Stripe
+dashboard and setting `BALLPIT_PAYMENT_METHOD_TYPES=card,paypal` would let
+Stripe handle it instead, and the direct integration could be retired.
 
-- OAuth2 client-credentials token from `/v1/oauth2/token`
-- Create order at `/v2/checkout/orders` with `intent: CAPTURE` and the mix as
-  `purchase_units[].items`
-- Redirect the buyer to the `payer-action` link, with `return_url` and
-  `cancel_url` set in `payment_source.paypal.experience_context`
-- Capture at `/v2/checkout/orders/{id}/capture` on return, with a
-  `PAYMENT.CAPTURE.COMPLETED` webhook as the source of truth, mirroring how
-  Stripe is handled today
+#### No SDK
 
-`App\Support\StripeCheckout` is the only place a Checkout session is built, so
-a PayPal provider slots in beside it without touching the cart, order, or
-webhook plumbing. **Not implemented yet** — the current checkout is Stripe only.
+PayPal's REST API is small enough for Laravel's HTTP client — token, create
+order, capture, verify webhook — so `App\Support\PayPalClient` talks to it
+directly and there is no PayPal SDK dependency. Access tokens are cached until
+a minute before they expire.
 
 ### Why inline prices, not Stripe Prices
 
 Every order is a bespoke mix, so there is no fixed catalogue of Stripe Prices.
 `StripeCheckout` sends each line as inline `price_data`, with the ball colour
-in the line description.
+in the line description. PayPal is itemised the same way, with an `item_total`
+and `shipping` breakdown that adds up to the order total exactly — PayPal
+rejects the order otherwise.
 
 ## Admin area
 
@@ -175,7 +211,7 @@ php artisan migrate --force && php artisan ballpit:sync-ball-types
 ## Tests
 
 ```sh
-php artisan test        # 58 PHP tests: cart, checkout, webhooks, admin, photos
+php artisan test        # 82 PHP tests: cart, checkout, both providers, admin, photos
 npm run test:bag        # the bag animation, headless
 vendor/bin/pint         # formatting
 ```
@@ -223,7 +259,6 @@ Other behaviour worth knowing:
 
 Deliberately out of scope for this scaffold:
 
-- PayPal is designed but not built — see [PayPal](#paypal--decided-not-yet-built)
 - No confirmation email yet (see the `TODO` in `FulfillOrderOnPayment`)
 - The admin area covers the catalogue only — no order management yet
 - No stock or lead-time tracking

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentProvider;
 use App\Models\BallType;
 use App\Models\Order;
 use App\Support\Cart;
@@ -51,6 +52,7 @@ class CheckoutTest extends TestCase
             ->post(route('checkout.store'), [
                 'customer_name' => '',
                 'customer_email' => 'not-an-email',
+                'provider' => 'stripe',
             ]);
 
         $response->assertSessionHasErrors(['customer_name', 'customer_email']);
@@ -68,6 +70,7 @@ class CheckoutTest extends TestCase
             ->post(route('checkout.store'), [
                 'customer_name' => 'Ada Lovelace',
                 'customer_email' => 'ada@example.com',
+                'provider' => 'stripe',
             ]);
 
         $response->assertRedirect();
@@ -89,6 +92,7 @@ class CheckoutTest extends TestCase
             ->post(route('checkout.store'), [
                 'customer_name' => 'Ada Lovelace',
                 'customer_email' => 'ada@example.com',
+                'provider' => 'stripe',
             ]);
 
         $response->assertRedirect('https://checkout.stripe.test/pay/cs_test_123');
@@ -96,6 +100,7 @@ class CheckoutTest extends TestCase
         $order = Order::sole();
 
         $this->assertSame(OrderStatus::Pending, $order->status);
+        $this->assertSame(PaymentProvider::Stripe, $order->payment_provider);
         $this->assertSame('ada@example.com', $order->customer_email);
         $this->assertSame('cs_test_123', $order->stripe_checkout_session_id);
         // 1,000 × $0.12 + 500 × $0.10 = $170.00
@@ -121,6 +126,7 @@ class CheckoutTest extends TestCase
             ->post(route('checkout.store'), [
                 'customer_name' => 'Ada Lovelace',
                 'customer_email' => 'ada@example.com',
+                'provider' => 'stripe',
             ]);
 
         $ballType->update(['name' => 'Renamed', 'price_per_ball_cents' => 99]);
@@ -131,6 +137,55 @@ class CheckoutTest extends TestCase
         $this->assertSame('#e8392e', $item->color_hex);
         $this->assertSame(12, $item->unit_price_cents);
         $this->assertSame(3600, $item->line_total_cents);
+    }
+
+    public function test_a_payment_method_must_be_chosen(): void
+    {
+        config(['cashier.secret' => 'sk_test_fake']);
+
+        $ballType = BallType::factory()->create();
+
+        $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
+            ->post(route('checkout.store'), [
+                'customer_name' => 'Ada Lovelace',
+                'customer_email' => 'ada@example.com',
+            ])
+            ->assertSessionHasErrors('provider');
+
+        $this->assertSame(0, Order::count());
+    }
+
+    public function test_an_unknown_payment_method_is_rejected(): void
+    {
+        $ballType = BallType::factory()->create();
+
+        $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
+            ->post(route('checkout.store'), [
+                'customer_name' => 'Ada Lovelace',
+                'customer_email' => 'ada@example.com',
+                'provider' => 'bitcoin',
+            ])
+            ->assertSessionHasErrors('provider');
+
+        $this->assertSame(0, Order::count());
+    }
+
+    public function test_the_checkout_page_only_offers_providers_that_are_configured(): void
+    {
+        config([
+            'cashier.secret' => 'sk_test_fake',
+            'services.paypal.client_id' => null,
+            'services.paypal.client_secret' => null,
+        ]);
+
+        $ballType = BallType::factory()->create();
+
+        $response = $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
+            ->get(route('checkout.show'));
+
+        $response->assertOk();
+        $response->assertSee('Pay by card');
+        $response->assertDontSee('value="paypal"', escape: false);
     }
 
     public function test_abandoning_payment_returns_the_customer_to_checkout_with_the_bag_intact(): void

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentProvider;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class Order extends Model
     protected $fillable = [
         'reference',
         'status',
+        'payment_provider',
         'customer_name',
         'customer_email',
         'subtotal_cents',
@@ -25,6 +27,8 @@ class Order extends Model
         'currency',
         'stripe_checkout_session_id',
         'stripe_payment_intent_id',
+        'paypal_order_id',
+        'paypal_capture_id',
         'paid_at',
     ];
 
@@ -32,6 +36,7 @@ class Order extends Model
     {
         return [
             'status' => OrderStatus::class,
+            'payment_provider' => PaymentProvider::class,
             'subtotal_cents' => 'integer',
             'shipping_cents' => 'integer',
             'total_cents' => 'integer',
