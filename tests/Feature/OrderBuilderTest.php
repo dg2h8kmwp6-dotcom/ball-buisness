@@ -26,14 +26,14 @@ class OrderBuilderTest extends TestCase
 
     public function test_the_stepper_uses_each_ball_types_own_quantity_step(): void
     {
-        $ballType = BallType::factory()->create(['quantity_step' => 10]);
+        $ballType = BallType::factory()->create(['quantity_step' => 5]);
 
         $response = $this->get(route('order.create'));
 
         $response->assertOk();
-        $response->assertSee('data-step="10"', escape: false);
+        $response->assertSee('data-step="5"', escape: false);
         // The buttons announce the step to screen readers.
-        $response->assertSee('quantity by 10', escape: false);
+        $response->assertSee('quantity by 5', escape: false);
     }
 
     public function test_the_quick_add_buttons_come_from_config(): void
@@ -57,7 +57,7 @@ class OrderBuilderTest extends TestCase
 
     public function test_a_small_order_is_accepted(): void
     {
-        $ballType = BallType::factory()->create(['quantity_step' => 10]);
+        $ballType = BallType::factory()->create(['quantity_step' => 5]);
 
         $response = $this->post(route('order.store'), [
             'quantities' => [$ballType->id => 5],
