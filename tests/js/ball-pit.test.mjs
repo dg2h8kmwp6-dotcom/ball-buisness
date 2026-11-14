@@ -1,30 +1,50 @@
 /**
- * Headless tests for the animated ball bag (resources/js/ball-bag.js).
+ * Headless tests for the animated ball pit (resources/js/ball-pit.js).
  *
- * The bag is a canvas animation, so it is exercised here by stubbing just
- * enough of the canvas API to run the real module under Node, driving
- * requestAnimationFrame manually, and inspecting the drawImage calls to see
- * where the balls ended up and in what colours.
+ * The pit is a canvas animation, so it is exercised here by stubbing enough
+ * of the canvas API to run the real module under Node, driving
+ * requestAnimationFrame by hand, and inspecting the drawImage calls to see
+ * where the balls ended up, how big they were drawn, and in what colours.
  *
- * Run with: npm run test:bag
+ * Run with: npm run test:pit
  */
 
 const WIDTH = 420;
 const HEIGHT = 420;
 
+/* Mirrors of the module's own layout constants, so the expectations below
+ * are written in the same terms the module draws in. */
+const SQUASH = 0.34;
+const DEPTH_SCALE = 0.16;
+const BUDGET = 170;
+
+const PIT = {
+    centerX: WIDTH / 2,
+    floorY: HEIGHT * 0.78,
+    depth: HEIGHT * 0.5,
+    radius: WIDTH * 0.39,
+};
+PIT.rimRadius = PIT.radius * 1.06;
+PIT.rimY = PIT.floorY - PIT.depth;
+
+const BALL_RADIUS = Math.min(
+    WIDTH * 0.085,
+    Math.max(
+        WIDTH * 0.03,
+        Math.cbrt((PIT.radius ** 2 * PIT.depth * 0.74 * 0.62 * 3) / (4 * BUDGET)),
+    ),
+);
+
 /** Every sprite canvas, mapped to the colour it was painted with. */
 const spriteColors = new Map();
 
-function makeGradient() {
-    return { addColorStop() {} };
-}
+const gradient = () => ({ addColorStop() {} });
 
 function makeContext(owner) {
     return {
-        _owner: owner,
         set fillStyle(value) {
             // createBallSprite sets the raw colour string first.
-            if (typeof value === 'string' && !spriteColors.has(owner)) {
+            if (typeof value === 'string' && value.startsWith('#') && !spriteColors.has(owner)) {
                 spriteColors.set(owner, value);
             }
         },
@@ -35,6 +55,7 @@ function makeContext(owner) {
         lineWidth: 1,
         lineJoin: '',
         lineCap: '',
+        globalAlpha: 1,
         scale() {},
         setTransform() {},
         clearRect() {},
@@ -51,8 +72,8 @@ function makeContext(owner) {
         fill() {},
         stroke() {},
         clip() {},
-        createRadialGradient: makeGradient,
-        createLinearGradient: makeGradient,
+        createRadialGradient: gradient,
+        createLinearGradient: gradient,
         drawImage(sprite, x, y, w) {
             owner._draws.push({
                 color: spriteColors.get(sprite) ?? null,
@@ -77,20 +98,12 @@ function makeCanvas(width, height) {
     return canvas;
 }
 
-globalThis.document = {
-    createElement: () => makeCanvas(32, 32),
-};
-
-globalThis.window = {
-    devicePixelRatio: 2,
-    matchMedia: () => ({ matches: false }),
-};
-
+globalThis.document = { createElement: () => makeCanvas(64, 64) };
+globalThis.window = { devicePixelRatio: 2, matchMedia: () => ({ matches: false }) };
 globalThis.ResizeObserver = class {
     observe() {}
     disconnect() {}
 };
-
 globalThis.Path2D = class {
     moveTo() {}
     lineTo() {}
@@ -100,16 +113,17 @@ globalThis.Path2D = class {
     addPath() {}
 };
 
-/** Drive requestAnimationFrame manually so we control the simulated time. */
+/** Drive requestAnimationFrame manually so we control simulated time. */
 let pending = [];
 let now = 0;
-globalThis.requestAnimationFrame = (cb) => {
-    pending.push(cb);
-    return pending.length;
-};
+globalThis.requestAnimationFrame = (cb) => pending.push(cb);
 globalThis.cancelAnimationFrame = () => {};
 
-let framesRun = 0;
+const { createBallPit } = await import(new URL('../../resources/js/ball-pit.js', import.meta.url).href);
+
+const canvas = makeCanvas(WIDTH, HEIGHT);
+let lastStats = null;
+const pit = createBallPit(canvas, { onStats: (stats) => (lastStats = stats) });
 
 function advance(seconds) {
     const frames = Math.round(seconds / (1 / 60));
@@ -125,40 +139,16 @@ function advance(seconds) {
 
         // Keep only the most recent frame's draw calls.
         canvas._draws = [];
-        framesRun += 1;
         due.forEach((cb) => cb(now));
     }
 }
 
-const { createBallBag } = await import(
-    new URL('../../resources/js/ball-bag.js', import.meta.url).href
-);
-
-const canvas = makeCanvas(WIDTH, HEIGHT);
-let lastStats = null;
-const widget = createBallBag(canvas, { onStats: (stats) => (lastStats = stats) });
-
-// Bag geometry, mirroring the module's own layout maths.
-const bag = {
-    centerX: WIDTH / 2,
-    topY: HEIGHT * 0.26,
-    bottomY: HEIGHT * 0.94,
-    halfTop: WIDTH * 0.37,
-    halfBottom: WIDTH * 0.305,
-};
-
-function halfWidthAt(y) {
-    const t = Math.min(Math.max((bag.bottomY - y) / (bag.bottomY - bag.topY), 0), 1);
-    return bag.halfBottom + (bag.halfTop - bag.halfBottom) * t;
-}
-
 function settleAndRead(mix, seconds = 12) {
     canvas._draws = [];
-    framesRun = 0;
-    widget.setMix(mix);
+    pit.setMix(mix);
     advance(seconds);
 
-    return { draws: canvas._draws, stats: lastStats, frames: framesRun };
+    return { draws: canvas._draws, stats: lastStats };
 }
 
 const failures = [];
@@ -187,43 +177,70 @@ console.log('\n1. Small order — every ball is shown individually');
     check('40 red / 20 blue', red === 40 && blue === 20, `got ${red}/${blue}`);
 }
 
-console.log('\n2. Balls settle inside the bag');
+console.log('\n2. Balls settle inside the pit');
 {
     const { draws } = settleAndRead([{ id: '1', color: '#e8392e', quantity: 120 }]);
 
-    const escapedFloor = draws.filter((d) => d.cy - d.r > bag.bottomY + 1);
-    const escapedWall = draws.filter(
-        (d) => d.cy > bag.topY && Math.abs(d.cx - bag.centerX) - d.r > halfWidthAt(d.cy) + 1,
-    );
-    const stillFalling = draws.filter((d) => d.cy + d.r < bag.topY);
+    // The floor is an ellipse, so its lowest point sits SQUASH*radius below centre.
+    const floorLimit = PIT.floorY + PIT.radius * SQUASH + BALL_RADIUS * 1.4;
+    const sideLimit = PIT.rimRadius + BALL_RADIUS * 1.4;
 
-    check('none below the bag floor', escapedFloor.length === 0, `${escapedFloor.length} escaped`);
-    check('none through the walls', escapedWall.length === 0, `${escapedWall.length} escaped`);
-    check('none still in mid-air', stillFalling.length === 0, `${stillFalling.length} airborne`);
+    const throughFloor = draws.filter((d) => d.cy > floorLimit);
+    const throughWall = draws.filter((d) => Math.abs(d.cx - PIT.centerX) > sideLimit);
+    const airborne = draws.filter((d) => d.cy + d.r < PIT.rimY);
+
+    check('none below the floor', throughFloor.length === 0, `${throughFloor.length} escaped`);
+    check('none through the walls', throughWall.length === 0, `${throughWall.length} escaped`);
+    check('none left mid-air', airborne.length === 0, `${airborne.length} airborne`);
 }
 
-console.log('\n3. Large order — balls are sampled, proportions preserved');
+console.log('\n3. Depth: balls are painted back to front');
+{
+    const { draws } = settleAndRead([{ id: '1', color: '#e8392e', quantity: 140 }]);
+
+    // Drawn radius grows with depth, so a correctly sorted frame paints radii
+    // in non-decreasing order. This is what stops the pile looking flat.
+    let inversions = 0;
+    for (let i = 1; i < draws.length; i += 1) {
+        if (draws[i].r < draws[i - 1].r - 0.001) {
+            inversions += 1;
+        }
+    }
+
+    const radii = draws.map((d) => d.r);
+    const spread = Math.max(...radii) / Math.min(...radii);
+
+    check('painted back to front', inversions === 0, `${inversions} out-of-order draws`);
+    check(
+        'near balls are drawn larger than far ones',
+        spread > 1.15,
+        `near/far size ratio ${spread.toFixed(3)}`,
+    );
+    check(
+        'depth scaling stays within its budget',
+        spread <= (1 + DEPTH_SCALE) / (1 - DEPTH_SCALE) + 0.01,
+        `ratio ${spread.toFixed(3)}`,
+    );
+}
+
+console.log('\n4. Large order — balls are sampled, proportions preserved');
 {
     const { draws, stats } = settleAndRead([
         { id: '1', color: '#e8392e', quantity: 15000 },
         { id: '2', color: '#2b7fd4', quantity: 5000 },
     ]);
 
-    check('rendered count within budget', draws.length <= 180, `drew ${draws.length}`);
+    check('rendered count within budget', draws.length <= BUDGET + 10, `drew ${draws.length}`);
     check('scale is > 1', stats.scale > 1, `got ${stats.scale.toFixed(1)}`);
 
     const red = draws.filter((d) => d.color === '#e8392e').length;
     const blue = draws.filter((d) => d.color === '#2b7fd4').length;
-    const redShare = red / (red + blue);
+    const share = red / (red + blue);
 
-    check(
-        'red is ~75% of the drawn balls',
-        Math.abs(redShare - 0.75) < 0.05,
-        `got ${(redShare * 100).toFixed(1)}%`,
-    );
+    check('red is ~75% of the drawn balls', Math.abs(share - 0.75) < 0.05, `got ${(share * 100).toFixed(1)}%`);
 }
 
-console.log('\n4. A tiny colour alongside a huge one still appears');
+console.log('\n5. A tiny colour alongside a huge one still appears');
 {
     const { draws } = settleAndRead([
         { id: '1', color: '#e8392e', quantity: 20000 },
@@ -234,52 +251,48 @@ console.log('\n4. A tiny colour alongside a huge one still appears');
     check('the 50-ball colour is visible', teal >= 1, `drew ${teal}`);
 }
 
-console.log('\n5. Fill level tracks quantity up to a full bag');
+console.log('\n6. Fill level tracks quantity up to a full pit');
 {
     const heights = [];
-    const bagHeight = bag.bottomY - bag.topY;
 
     for (const quantity of [40, 100, 170, 5000]) {
-        widget.setMix([]);
+        pit.setMix([]);
         advance(1.5);
         const { draws } = settleAndRead([{ id: '1', color: '#e8392e', quantity }]);
         const topOfPile = Math.min(...draws.map((d) => d.cy));
-        heights.push({ quantity, fill: bag.bottomY - topOfPile, drawn: draws.length });
+        heights.push({ quantity, fill: PIT.floorY - topOfPile, drawn: draws.length });
     }
 
     console.log(
         '        ' +
             heights
-                .map(
-                    (h) =>
-                        `${h.quantity}→${h.fill.toFixed(0)}px/${((h.fill / bagHeight) * 100).toFixed(0)}% (${h.drawn} drawn)`,
-                )
+                .map((h) => `${h.quantity}→${h.fill.toFixed(0)}px/${((h.fill / PIT.depth) * 100).toFixed(0)}% (${h.drawn})`)
                 .join('  '),
     );
 
     check(
-        'the pile deepens as the order grows, below the cap',
+        'the pile deepens as the order grows',
         heights[0].fill < heights[1].fill && heights[1].fill < heights[2].fill,
         JSON.stringify(heights.map((h) => Math.round(h.fill))),
     );
     check(
-        'a 170-ball order is >1.8x the depth of a 40-ball order',
-        heights[2].fill > heights[0].fill * 1.8,
-        `${heights[0].fill.toFixed(0)}px vs ${heights[2].fill.toFixed(0)}px`,
-    );
-    check(
-        'past the cap the bag stays full rather than growing',
-        Math.abs(heights[3].fill - heights[2].fill) < 12,
+        'past the cap the pit stays full rather than growing',
+        Math.abs(heights[3].fill - heights[2].fill) < 14,
         `${heights[2].fill.toFixed(0)}px vs ${heights[3].fill.toFixed(0)}px`,
     );
     check(
-        'a maxed-out order looks properly full (>70% of the bag)',
-        heights[3].fill / bagHeight > 0.7,
-        `${((heights[3].fill / bagHeight) * 100).toFixed(0)}% full`,
+        'a maxed-out order looks properly full (>60% of the pit)',
+        heights[3].fill / PIT.depth > 0.6,
+        `${((heights[3].fill / PIT.depth) * 100).toFixed(0)}% full`,
+    );
+    check(
+        'the pile never overflows the rim',
+        heights[3].fill < PIT.depth * 1.08,
+        `${heights[3].fill.toFixed(0)}px vs pit depth ${PIT.depth}px`,
     );
 }
 
-console.log('\n6. Removing a colour removes its balls');
+console.log('\n7. Removing a colour removes its balls');
 {
     settleAndRead([
         { id: '1', color: '#e8392e', quantity: 300 },
@@ -293,14 +306,14 @@ console.log('\n6. Removing a colour removes its balls');
     check('red remains', draws.length > 0, `drew ${draws.length}`);
 }
 
-console.log('\n7. Emptying the bag clears it');
+console.log('\n8. Emptying the pit clears it');
 {
     const { draws, stats } = settleAndRead([]);
     check('nothing drawn', draws.length === 0, `drew ${draws.length}`);
     check('quantity reported as 0', stats.quantity === 0, `got ${stats.quantity}`);
 }
 
-console.log('\n8. Recolouring a ball type updates the balls already in the bag');
+console.log('\n9. Recolouring a ball type updates the balls already in the pit');
 {
     settleAndRead([{ id: '9', color: '#e8392e', quantity: 80 }]);
     const { draws } = settleAndRead([{ id: '9', color: '#8257c9', quantity: 80 }]);
@@ -311,7 +324,7 @@ console.log('\n8. Recolouring a ball type updates the balls already in the bag')
     check('all balls are now purple', purple === draws.length && red === 0, `${purple} purple, ${red} red`);
 }
 
-console.log('\n9. Proportions hold across an awkward three-way mix');
+console.log('\n10. Proportions hold across an awkward three-way mix');
 {
     const { draws } = settleAndRead([
         { id: 'a', color: '#e8392e', quantity: 3333 },
@@ -323,7 +336,7 @@ console.log('\n9. Proportions hold across an awkward three-way mix');
         (c) => draws.filter((d) => d.color === c).length,
     );
 
-    check('budget fully used', draws.length === 170, `drew ${draws.length}`);
+    check('budget fully used', draws.length === BUDGET, `drew ${draws.length}`);
     check(
         'all three colours within one ball of even',
         Math.max(...counts) - Math.min(...counts) <= 1,

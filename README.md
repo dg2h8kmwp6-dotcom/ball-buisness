@@ -244,38 +244,49 @@ php artisan migrate --force && php artisan ballpit:sync-ball-types
 
 ```sh
 php artisan test        # 82 PHP tests: cart, checkout, both providers, admin, photos
-npm run test:bag        # the bag animation, headless
+npm run test:pit        # the ball pit animation, headless
 vendor/bin/pint         # formatting
 ```
 
-`npm run test:bag` runs `tests/js/ball-bag.test.mjs`, which drives the real
+`npm run test:pit` runs `tests/js/ball-pit.test.mjs`, which drives the real
 animation module under Node with a stubbed canvas and asserts on what it
-draws: that balls stay inside the bag, that colour proportions survive
-sampling, that a small accent colour never disappears, and that the fill level
-tracks the order size. It needs no test framework — just `node`.
+draws: that balls stay inside the pit, that colour proportions survive
+sampling, that a small accent colour never disappears, that the fill level
+tracks the order size, and that balls are painted back to front. It needs no
+test framework — just `node`.
 
-## The bag animation
+## The ball pit animation
 
-`resources/js/ball-bag.js` is a small canvas simulation with no dependencies.
+`resources/js/ball-pit.js` is a canvas simulation with no dependencies.
 
-A 20,000-ball order cannot be drawn ball by ball, so the bag renders a
+Balls are simulated in **three dimensions** inside a cylinder and projected in
+3/4 perspective: further-back balls sit higher on screen, are drawn smaller
+and are hazed toward shadow, and the frame is painted back to front. That
+depth is what makes a heap of circles read as a pit of balls rather than a
+flat wall of them.
+
+A 20,000-ball order cannot be drawn ball by ball, so the pit renders a
 **sample**: at most 170 balls, allocated across the selected colours by
 largest-remainder rounding so the proportions stay true and any ordered colour
-gets at least one ball. Below 170 balls the mix is drawn one-for-one. Above it
-the bag is simply full, and the caption states how many real balls each drawn
-ball represents.
+gets at least one ball. Below 170 the mix is drawn one-for-one. Above it the
+pit is simply full, and the caption states how many real balls each drawn ball
+represents.
 
 Other behaviour worth knowing:
 
-- Balls pour in over ~0.9s regardless of batch size, shuffled so colours blend
+- Balls pour in over ~1s regardless of batch size, shuffled so colours blend
   rather than arriving in layers.
+- Ball radius is derived from the pit's dimensions so a full budget fills
+  about three quarters of it at any canvas size, rather than being a magic
+  number tuned for one screen.
 - Simulation stops ~3.5s after the last change. A dense pile jitters forever
   under positional correction and never reaches a true velocity rest, so the
   loop would otherwise never idle.
 - `prefers-reduced-motion` skips the fall: the pile is settled before the
   first paint.
-- Bag updates are debounced 140ms, so typing "5000" pours once, not four
-  times.
+- Updates are debounced 140ms, so typing "5000" pours once, not four times.
+- A ball type with an uploaded photo uses it as the ball texture, falling back
+  to a generated gloss sprite while it loads or when there is none.
 
 ## Replacing the placeholder branding
 

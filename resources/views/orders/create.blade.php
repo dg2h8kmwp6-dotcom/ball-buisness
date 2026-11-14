@@ -9,7 +9,7 @@
             <p class="eyebrow">Step one</p>
             <h1 class="mt-3 font-display text-4xl font-extrabold tracking-tighter sm:text-5xl">Build your mix</h1>
             <p class="mt-4 text-lg text-pit-700">
-                Set a quantity for each colour you want. The bag fills as you go, so you can see the
+                Set a quantity for each colour you want. The pit fills as you go, so you can see the
                 blend before you order.
             </p>
         </div>
@@ -148,24 +148,24 @@
             <aside class="lg:sticky lg:top-24 lg:self-start">
                 <div class="card overflow-hidden">
                     <div class="flex items-center justify-between border-b-2 border-pit-950 bg-sun px-5 py-3">
-                        <h2 class="font-display text-sm font-extrabold uppercase tracking-wider">Bag preview</h2>
+                        <h2 class="font-display text-sm font-extrabold uppercase tracking-wider">Your pit</h2>
                         <span data-total-balls class="font-display text-sm font-extrabold tabular-nums">0</span>
                     </div>
 
                     <div class="bg-pit-100 px-5 pt-4">
                         <div class="relative">
                             <canvas
-                                data-ball-bag
+                                data-ball-pit
                                 class="aspect-square w-full"
                                 role="img"
-                                aria-label="An animated bag filling with the plastic balls you have selected"
+                                aria-label="An animated ball pit filling with the plastic balls you have selected"
                             ></canvas>
 
                             <p
-                                data-bag-empty
+                                data-pit-empty
                                 class="pointer-events-none absolute inset-x-6 bottom-1/4 text-center text-sm font-medium text-pit-500"
                             >
-                                Nothing in the bag yet. Add some balls and watch them drop in.
+                                Empty pit. Add some balls and watch them drop in.
                             </p>
                         </div>
 

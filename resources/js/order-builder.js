@@ -1,4 +1,4 @@
-import { createBallBag } from './ball-bag.js';
+import { createBallPit } from './ball-pit.js';
 
 /**
  * Round to two significant figures, so the caption reads "about 120 balls"
@@ -23,7 +23,7 @@ function roundToTwoSignificantFigures(value) {
  */
 export function initOrderBuilder(root) {
     const rows = Array.from(root.querySelectorAll('[data-ball-row]'));
-    const canvas = root.querySelector('[data-ball-bag]');
+    const canvas = root.querySelector('[data-ball-pit]');
 
     if (rows.length === 0 || !canvas) {
         return;
@@ -44,10 +44,10 @@ export function initOrderBuilder(root) {
     const totalEl = root.querySelector('[data-total]');
     const scaleNoteEl = root.querySelector('[data-scale-note]');
     const legendEl = root.querySelector('[data-legend]');
-    const emptyStateEl = root.querySelector('[data-bag-empty]');
+    const emptyStateEl = root.querySelector('[data-pit-empty]');
     const submitEl = root.querySelector('[data-submit]');
 
-    const bag = createBallBag(canvas, {
+    const pit = createBallPit(canvas, {
         onStats({ scale, quantity }) {
             if (!scaleNoteEl) {
                 return;
@@ -128,9 +128,9 @@ export function initOrderBuilder(root) {
 
         renderLegend(selected, totalBalls);
 
-        // Totals update on every keystroke, but the bag waits a beat: typing
+        // Totals update on every keystroke, but the pit waits a beat: typing
         // "5000" should pour once, not four times.
-        queueBagUpdate(
+        queuePitUpdate(
             selected.map((state) => ({
                 id: state.id,
                 color: state.color,
@@ -140,16 +140,16 @@ export function initOrderBuilder(root) {
         );
     }
 
-    let bagUpdateTimer = null;
+    let pitUpdateTimer = null;
 
-    function queueBagUpdate(mix) {
-        if (bagUpdateTimer !== null) {
-            clearTimeout(bagUpdateTimer);
+    function queuePitUpdate(mix) {
+        if (pitUpdateTimer !== null) {
+            clearTimeout(pitUpdateTimer);
         }
 
-        bagUpdateTimer = setTimeout(() => {
-            bagUpdateTimer = null;
-            bag.setMix(mix);
+        pitUpdateTimer = setTimeout(() => {
+            pitUpdateTimer = null;
+            pit.setMix(mix);
         }, 140);
     }
 
@@ -244,12 +244,12 @@ export function initOrderBuilder(root) {
 
     render();
 
-    if (bagUpdateTimer !== null) {
-        clearTimeout(bagUpdateTimer);
-        bagUpdateTimer = null;
+    if (pitUpdateTimer !== null) {
+        clearTimeout(pitUpdateTimer);
+        pitUpdateTimer = null;
     }
 
-    bag.setMix(
+    pit.setMix(
         rows
             .map(readRow)
             .filter((state) => state.quantity > 0)

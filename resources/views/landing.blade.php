@@ -21,7 +21,7 @@
 
                 <p class="mt-7 max-w-lg text-lg leading-relaxed text-pit-700">
                     {{ config('ballpit.tagline') }} Choose your colours, set your quantities, and watch the
-                    mix drop into the bag before you pay a penny.
+                    mix tumble into the pit before you pay a penny.
                 </p>
 
                 <div class="mt-9 flex flex-wrap items-center gap-4">
@@ -106,7 +106,7 @@
         <ol class="mt-12 grid gap-6 sm:grid-cols-3">
             @foreach ([
                 ['Build your palette', 'Set a quantity for each ball type. Mix as many colours as you like.', 'bg-berry', 'text-white'],
-                ['Watch the bag fill', 'Your selection drops into the bag so you can see the mix before you buy.', 'bg-sun', 'text-pit-950'],
+                ['Watch the pit fill', 'Your selection tumbles into the pit so you can see the mix before you buy.', 'bg-sun', 'text-pit-950'],
                 ['Check out securely', 'Pay by card or wallet. We mix, bag, and ship your order.', 'bg-sky', 'text-white'],
             ] as $index => [$heading, $copy, $accent, $ink])
                 <li class="card flex flex-col p-6">
@@ -120,23 +120,4 @@
         </ol>
     </section>
 
-    {{-- Closing call to action --------------------------------------------- --}}
-    <section class="mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6">
-        <div class="card relative overflow-hidden bg-pit-950 px-8 py-14 text-center sm:px-14">
-            <div class="pointer-events-none absolute -right-10 -top-10 size-48 rounded-full bg-berry/30" aria-hidden="true"></div>
-            <div class="pointer-events-none absolute -bottom-14 -left-10 size-56 rounded-full bg-sky/25" aria-hidden="true"></div>
-
-            <div class="relative">
-                <h2 class="font-display text-4xl font-extrabold tracking-tighter text-white text-balance sm:text-5xl">
-                    Ready to mix?
-                </h2>
-                <p class="mx-auto mt-4 max-w-md text-pit-200">
-                    Build a bag in about a minute. Nothing is ordered until you say so.
-                </p>
-                <a href="{{ route('order.create') }}" class="btn-sun mt-8 text-lg">
-                    Order now
-                </a>
-            </div>
-        </div>
-    </section>
 </x-layout>

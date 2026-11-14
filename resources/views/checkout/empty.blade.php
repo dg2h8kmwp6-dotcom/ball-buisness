@@ -10,8 +10,8 @@
 
             <h1 class="mt-6 font-display text-3xl font-extrabold tracking-tighter">Your bag is empty</h1>
             <p class="mx-auto mt-3 max-w-sm text-pit-700">
-                Build a mix first — choose your colours and quantities, and watch them drop into the
-                bag. You will come back here to check out.
+                Build a mix first — choose your colours and quantities, and watch them tumble into the
+                pit. You will come back here to check out.
             </p>
 
             <a href="{{ route('order.create') }}" class="btn-primary mt-8">
