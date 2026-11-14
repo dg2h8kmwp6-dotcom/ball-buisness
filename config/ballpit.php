@@ -12,9 +12,9 @@ return [
     |
     */
 
-    'brand_name' => env('BALLPIT_BRAND_NAME', 'Pitstop Balls'),
+    'brand_name' => env('BALLPIT_BRAND_NAME', 'Ball Pit Pallette'),
 
-    'tagline' => env('BALLPIT_TAGLINE', 'Custom plastic ball pits, mixed to order.'),
+    'tagline' => env('BALLPIT_TAGLINE', 'Custom plastic ball pits, mixed to your palette.'),
 
     'support_email' => env('BALLPIT_SUPPORT_EMAIL', 'hello@example.com'),
 

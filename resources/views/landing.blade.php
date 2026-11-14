@@ -10,8 +10,8 @@
                 </div>
 
                 <h1 class="mt-6 text-4xl font-bold leading-tight tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                    Ball pits, mixed exactly
-                    <span class="text-pit-600">how you want them.</span>
+                    Pick your palette,
+                    <span class="text-pit-600">we'll fill the pit.</span>
                 </h1>
 
                 <p class="mt-6 max-w-xl text-lg leading-relaxed text-pit-700">
@@ -90,7 +90,7 @@
 
         <ol class="mt-10 grid gap-6 sm:grid-cols-3">
             @foreach ([
-                ['Pick your colours', 'Set a quantity for each ball type. Mix as many colours as you like.'],
+                ['Build your palette', 'Set a quantity for each ball type. Mix as many colours as you like.'],
                 ['Watch the bag fill', 'Your selection drops into the bag so you can see the mix before you buy.'],
                 ['Check out securely', 'Pay by card or wallet. We mix, bag, and ship your order.'],
             ] as $index => [$heading, $copy])

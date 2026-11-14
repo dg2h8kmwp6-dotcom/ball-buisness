@@ -1,4 +1,4 @@
-# Pitstop Balls
+# Ball Pit Pallette
 
 A storefront for custom plastic ball-pit orders. Customers pick colours and
 quantities, watch their mix pour into a bag, and check out through Stripe.
@@ -76,31 +76,40 @@ when `STRIPE_WEBHOOK_SECRET` is set. `App\Listeners\FulfillOrderOnPayment`
 handles the `checkout.session.*` events; its `TODO` marks where the
 confirmation email and warehouse notification belong.
 
-### PayPal — read this before promising it
+### PayPal — decided, not yet built
 
-**PayPal through Stripe is only available to Stripe accounts based in
-[supported European countries](https://docs.stripe.com/payments/paypal#paypal-business-locations)**
-(the EEA, UK, and Switzerland). Customers can be anywhere, but the *merchant*
-account cannot be in the US. Verified against Stripe's docs on 2026-11-14.
+**Decision: a direct PayPal integration alongside Stripe.** The store runs on a
+US Stripe account, which rules out the simpler routes.
 
-So there are two paths:
+Background, verified against Stripe's docs on 2026-11-14:
 
-1. **If your Stripe account is in a supported European country** — enable
-   PayPal in your
-   [payment method settings](https://dashboard.stripe.com/settings/payment_methods)
-   and it appears at checkout automatically. No code change: leave
-   `BALLPIT_PAYMENT_METHOD_TYPES` empty and Stripe decides per customer. To
-   force it, set `BALLPIT_PAYMENT_METHOD_TYPES=card,paypal`.
+- **PayPal processed by Stripe** is only available to Stripe accounts based in
+  [supported European countries](https://docs.stripe.com/payments/paypal#paypal-business-locations)
+  (EEA, UK, Switzerland). Customers may be anywhere, but the *merchant* account
+  cannot be in the US. Not an option here.
+- **Stripe's [PayPal custom payment method](https://docs.stripe.com/payments/payment-methods/custom-payment-methods/paypal)**
+  is in preview and gated: it needs access from a Stripe account manager, and
+  even once granted you still "build, host, and maintain the integration
+  between Checkout and PayPal" yourself. Same work as going direct, plus a
+  gatekeeper.
 
-2. **Otherwise (including US accounts)** — PayPal through Stripe is not
-   available. The options are Stripe's
-   [PayPal custom payment method](https://docs.stripe.com/payments/payment-methods/custom-payment-methods/paypal),
-   which routes through *your own* PayPal account, or a direct PayPal
-   integration alongside Stripe.
+So PayPal will be wired up directly against the
+[PayPal Orders v2 API](https://developer.paypal.com/docs/api/orders/v2/), using
+the merchant's own PayPal account, offered beside the existing Stripe card
+checkout. Planned shape:
 
-`App\Support\StripeCheckout` is the single place where the Checkout session is
-built, so a second provider slots in beside it without touching the cart,
-order, or webhook code.
+- OAuth2 client-credentials token from `/v1/oauth2/token`
+- Create order at `/v2/checkout/orders` with `intent: CAPTURE` and the mix as
+  `purchase_units[].items`
+- Redirect the buyer to the `payer-action` link, with `return_url` and
+  `cancel_url` set in `payment_source.paypal.experience_context`
+- Capture at `/v2/checkout/orders/{id}/capture` on return, with a
+  `PAYMENT.CAPTURE.COMPLETED` webhook as the source of truth, mirroring how
+  Stripe is handled today
+
+`App\Support\StripeCheckout` is the only place a Checkout session is built, so
+a PayPal provider slots in beside it without touching the cart, order, or
+webhook plumbing. **Not implemented yet** — the current checkout is Stripe only.
 
 ### Why inline prices, not Stripe Prices
 
@@ -158,6 +167,7 @@ Other behaviour worth knowing:
 
 Deliberately out of scope for this scaffold:
 
+- PayPal is designed but not built — see [PayPal](#paypal--decided-not-yet-built)
 - No confirmation email yet (see the `TODO` in `FulfillOrderOnPayment`)
 - No admin view of orders, and no stock or lead-time tracking
 - No volume discounts — pricing is flat per ball, per type
