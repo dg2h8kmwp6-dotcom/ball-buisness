@@ -9,12 +9,12 @@
         src="{{ $ballType->imageUrl() }}"
         alt="{{ $ballType->name }}"
         loading="lazy"
-        {{ $attributes->merge(['class' => $class.' shrink-0 rounded-full object-cover ring-1 ring-inset ring-black/10']) }}
+        {{ $attributes->merge(['class' => $class.' shrink-0 rounded-full border-2 border-pit-950 object-cover']) }}
     >
 @else
     <span
         aria-hidden="true"
-        style="background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.72) 0%, {{ $ballType->color_hex }} 38%, rgba(0,0,0,.14) 100%);"
-        {{ $attributes->merge(['class' => $class.' shrink-0 rounded-full ring-1 ring-inset ring-black/10']) }}
+        style="background: radial-gradient(circle at 34% 28%, rgba(255,255,255,.8) 0%, {{ $ballType->color_hex }} 36%, {{ $ballType->color_hex }} 100%);"
+        {{ $attributes->merge(['class' => $class.' shrink-0 rounded-full border-2 border-pit-950']) }}
     ></span>
 @endif

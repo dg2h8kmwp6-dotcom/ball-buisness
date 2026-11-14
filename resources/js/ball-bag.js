@@ -16,6 +16,9 @@ const FLOOR_FRICTION = 0.9;
 const FIXED_STEP = 1 / 120;
 const MAX_STEPS_PER_FRAME = 8;
 const REMOVAL_DURATION = 0.22;
+
+/** Ink used for the bag outline, matching the page's border colour. */
+const INK = '#15100b';
 const POUR_DURATION = 0.9;
 
 /**
@@ -192,8 +195,8 @@ function createPhotoSprite(image, radius, dpr) {
     // flat-colour balls still reads as one bag.
     ctx.beginPath();
     ctx.arc(center, center, radius - 0.5, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(21, 16, 11, 0.55)';
+    ctx.lineWidth = 1.25;
     ctx.stroke();
 
     return sprite;
@@ -244,8 +247,8 @@ function createBallSprite(color, radius, dpr) {
     // Rim shading keeps adjacent same-colour balls readable as separate balls.
     ctx.beginPath();
     ctx.arc(center, center, radius - 0.5, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(21, 16, 11, 0.55)';
+    ctx.lineWidth = 1.25;
     ctx.stroke();
 
     // Specular highlight.
@@ -776,8 +779,8 @@ export function createBallBag(canvas, options = {}) {
 
         // Bag outline.
         ctx.save();
-        ctx.strokeStyle = 'rgba(30, 41, 90, 0.4)';
-        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 3;
         ctx.lineJoin = 'round';
         ctx.stroke(interior);
         ctx.restore();
@@ -788,15 +791,15 @@ export function createBallBag(canvas, options = {}) {
         ctx.ellipse(centerX, topY, halfTop, halfTop * 0.17, 0, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.fill();
-        ctx.strokeStyle = 'rgba(30, 41, 90, 0.45)';
-        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 3;
         ctx.stroke();
         ctx.restore();
 
         // Handles.
         ctx.save();
-        ctx.strokeStyle = 'rgba(30, 41, 90, 0.4)';
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 4.5;
         ctx.lineCap = 'round';
 
         for (const direction of [-1, 1]) {

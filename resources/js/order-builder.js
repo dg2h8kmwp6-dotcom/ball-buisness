@@ -174,19 +174,19 @@ export function initOrderBuilder(root) {
                 swatch = document.createElement('img');
                 swatch.src = state.image;
                 swatch.alt = '';
-                swatch.className = 'size-3.5 shrink-0 rounded-full object-cover ring-1 ring-black/15';
+                swatch.className = 'size-4 shrink-0 rounded-full border-2 border-pit-950 object-cover';
             } else {
                 swatch = document.createElement('span');
-                swatch.className = 'size-3 shrink-0 rounded-full ring-1 ring-black/15';
+                swatch.className = 'size-4 shrink-0 rounded-full border-2 border-pit-950';
                 swatch.style.backgroundColor = state.color;
             }
 
             const label = document.createElement('span');
-            label.className = 'flex-1 truncate text-pit-800';
+            label.className = 'flex-1 truncate font-medium text-pit-800';
             label.textContent = state.name;
 
             const value = document.createElement('span');
-            value.className = 'font-medium tabular-nums text-pit-900';
+            value.className = 'font-display font-bold tabular-nums text-pit-950';
             value.textContent = `${count.format(state.quantity)} · ${share}%`;
 
             item.append(swatch, label, value);

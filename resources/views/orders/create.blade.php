@@ -6,15 +6,16 @@
         class="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6"
     >
         <div class="max-w-2xl">
-            <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Build your mix</h1>
-            <p class="mt-3 text-pit-700">
+            <p class="eyebrow">Step one</p>
+            <h1 class="mt-3 font-display text-4xl font-extrabold tracking-tighter sm:text-5xl">Build your mix</h1>
+            <p class="mt-4 text-lg text-pit-700">
                 Set a quantity for each colour you want. The bag fills as you go, so you can see the
                 blend before you order.
             </p>
         </div>
 
         @error('quantities')
-            <div role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div role="alert" class="card-flat mt-6 border-berry bg-berry/5 px-4 py-3 text-sm font-medium">
                 {{ $message }}
             </div>
         @enderror
@@ -25,13 +26,11 @@
             {{-- Ball catalogue --}}
             <div>
                 <div class="flex items-center justify-between gap-4">
-                    <h2 class="text-sm font-semibold uppercase tracking-wide text-pit-600">
-                        Choose your balls
-                    </h2>
+                    <h2 class="eyebrow">Choose your balls</h2>
                     <button
                         type="button"
                         data-clear-all
-                        class="text-sm font-medium text-pit-600 underline-offset-4 hover:text-pit-900 hover:underline"
+                        class="font-display text-sm font-bold tracking-tight text-pit-700 underline decoration-2 underline-offset-4 hover:text-berry"
                     >
                         Clear all
                     </button>
@@ -48,14 +47,14 @@
                             data-price-cents="{{ $ballType->price_per_ball_cents }}"
                             data-step="{{ $ballType->quantity_step }}"
                             data-selected="false"
-                            class="group rounded-2xl border border-pit-200 bg-white p-4 shadow-sm transition data-[selected=true]:border-pit-400 data-[selected=true]:ring-2 data-[selected=true]:ring-pit-500/25"
+                            class="card-soft p-4 transition-[border-color,box-shadow,transform] data-[selected=true]:border-pit-950 data-[selected=true]:shadow-pop"
                         >
                             <div class="flex flex-wrap items-start gap-4">
                                 <x-ball-swatch :ball-type="$ballType" class="mt-0.5 size-10" />
 
                                 <div class="min-w-48 flex-1">
-                                    <h3 class="font-semibold">{{ $ballType->name }}</h3>
-                                    <p class="mt-0.5 text-sm text-pit-600">
+                                    <h3 class="font-display text-lg font-extrabold tracking-tight">{{ $ballType->name }}</h3>
+                                    <p class="mt-0.5 text-sm font-medium text-pit-600">
                                         {{ $ballType->formattedUnitPrice() }} per ball · {{ $ballType->diameter_mm }}mm
                                     </p>
                                     @if ($ballType->description)
@@ -70,7 +69,7 @@
                                         type="button"
                                         data-step-down
                                         aria-label="Decrease {{ $ballType->name }} quantity by {{ $ballType->quantity_step }}"
-                                        class="inline-flex size-9 items-center justify-center rounded-lg border border-pit-200 text-pit-700 transition hover:bg-pit-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-pit-500"
+                                        class="inline-flex size-10 items-center justify-center rounded-full border-2 border-pit-950 bg-white transition hover:-translate-y-0.5 hover:bg-sun hover:shadow-pop-sm focus:outline-none focus-visible:ring-4 focus-visible:ring-sun motion-reduce:transform-none"
                                     >
                                         <svg class="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                             <path d="M4 10a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H4.75A.75.75 0 0 1 4 10Z" />
@@ -88,14 +87,14 @@
                                         step="1"
                                         placeholder="0"
                                         aria-label="Quantity of {{ $ballType->name }}"
-                                        class="w-24 rounded-lg border border-pit-300 bg-white px-3 py-2 text-center font-medium tabular-nums shadow-sm focus:border-pit-500 focus:outline-none focus:ring-2 focus:ring-pit-500/30 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                        class="w-24 rounded-xl border-2 border-pit-950 bg-white px-3 py-2 text-center font-display text-lg font-extrabold tabular-nums focus:outline-none focus:ring-4 focus:ring-sun [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                     >
 
                                     <button
                                         type="button"
                                         data-step-up
                                         aria-label="Increase {{ $ballType->name }} quantity by {{ $ballType->quantity_step }}"
-                                        class="inline-flex size-9 items-center justify-center rounded-lg border border-pit-200 text-pit-700 transition hover:bg-pit-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-pit-500"
+                                        class="inline-flex size-10 items-center justify-center rounded-full border-2 border-pit-950 bg-white transition hover:-translate-y-0.5 hover:bg-sun hover:shadow-pop-sm focus:outline-none focus-visible:ring-4 focus-visible:ring-sun motion-reduce:transform-none"
                                     >
                                         <svg class="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                             <path d="M10 4a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 10 4Z" />
@@ -104,13 +103,13 @@
                                 </div>
                             </div>
 
-                            <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-pit-100 pt-3">
-                                <span class="text-xs font-medium uppercase tracking-wide text-pit-500">Quick add</span>
+                            <div class="mt-4 flex flex-wrap items-center gap-2 border-t-2 border-dashed border-pit-200 pt-3">
+                                <span class="eyebrow">Quick add</span>
                                 @foreach (config('ballpit.quick_add_quantities') as $amount)
                                     <button
                                         type="button"
                                         data-quick-add="{{ $amount }}"
-                                        class="rounded-full border border-pit-200 px-3 py-1 text-xs font-semibold text-pit-700 transition hover:border-pit-400 hover:bg-pit-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-pit-500"
+                                        class="chip"
                                     >
                                         +{{ number_format($amount) }}
                                     </button>
@@ -118,19 +117,19 @@
                                 <button
                                     type="button"
                                     data-clear
-                                    class="ml-auto text-xs font-medium text-pit-500 underline-offset-4 hover:text-pit-800 hover:underline"
+                                    class="ml-auto font-display text-xs font-bold text-pit-500 underline decoration-2 underline-offset-4 hover:text-berry"
                                 >
                                     Remove
                                 </button>
                             </div>
 
                             @error("quantities.{$ballType->id}")
-                                <p class="mt-2 text-sm text-red-700">{{ $message }}</p>
+                                <p class="error-text">{{ $message }}</p>
                             @enderror
                         </li>
                     @empty
-                        <li class="rounded-2xl border border-dashed border-pit-300 bg-white p-8 text-center">
-                            <p class="font-semibold">No ball colours are available yet.</p>
+                        <li class="card-flat border-dashed p-8 text-center">
+                            <p class="font-display text-lg font-extrabold tracking-tight">No ball colours are available yet.</p>
                             <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-pit-700">
                                 The catalogue is empty, so there is nothing to order. If you run this shop,
                                 load the default colours with
@@ -146,61 +145,59 @@
             </div>
 
             {{-- The bag --}}
-            <aside class="lg:sticky lg:top-6 lg:self-start">
-                <div class="rounded-2xl border border-pit-200 bg-gradient-to-b from-white to-pit-100 p-5 shadow-sm">
-                    <h2 class="text-sm font-semibold uppercase tracking-wide text-pit-600">Bag preview</h2>
-
-                    <div class="relative mt-3">
-                        <canvas
-                            data-ball-bag
-                            class="aspect-square w-full"
-                            role="img"
-                            aria-label="An animated bag filling with the plastic balls you have selected"
-                        ></canvas>
-
-                        <p
-                            data-bag-empty
-                            class="pointer-events-none absolute inset-x-6 bottom-1/4 text-center text-sm text-pit-500"
-                        >
-                            Nothing in the bag yet. Add some balls and watch them drop in.
-                        </p>
+            <aside class="lg:sticky lg:top-24 lg:self-start">
+                <div class="card overflow-hidden">
+                    <div class="flex items-center justify-between border-b-2 border-pit-950 bg-sun px-5 py-3">
+                        <h2 class="font-display text-sm font-extrabold uppercase tracking-wider">Bag preview</h2>
+                        <span data-total-balls class="font-display text-sm font-extrabold tabular-nums">0</span>
                     </div>
 
-                    <p data-scale-note class="min-h-5 text-center text-xs text-pit-500"></p>
+                    <div class="bg-pit-100 px-5 pt-4">
+                        <div class="relative">
+                            <canvas
+                                data-ball-bag
+                                class="aspect-square w-full"
+                                role="img"
+                                aria-label="An animated bag filling with the plastic balls you have selected"
+                            ></canvas>
 
-                    <ul data-legend class="mt-4 space-y-1.5 empty:hidden"></ul>
+                            <p
+                                data-bag-empty
+                                class="pointer-events-none absolute inset-x-6 bottom-1/4 text-center text-sm font-medium text-pit-500"
+                            >
+                                Nothing in the bag yet. Add some balls and watch them drop in.
+                            </p>
+                        </div>
 
-                    <dl class="mt-5 space-y-2 border-t border-pit-200 pt-4 text-sm">
-                        <div class="flex items-center justify-between">
-                            <dt class="text-pit-600">Total balls</dt>
-                            <dd data-total-balls class="font-semibold tabular-nums">0</dd>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <dt class="text-pit-600">Subtotal</dt>
-                            <dd data-subtotal class="font-semibold tabular-nums">—</dd>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <dt class="text-pit-600">Shipping</dt>
-                            <dd data-shipping class="font-semibold tabular-nums">—</dd>
-                        </div>
-                        <div class="flex items-center justify-between border-t border-pit-200 pt-2 text-base">
-                            <dt class="font-semibold">Total</dt>
-                            <dd data-total class="font-bold tabular-nums">—</dd>
-                        </div>
-                    </dl>
+                        <p data-scale-note class="min-h-5 pb-3 text-center text-xs font-medium text-pit-600"></p>
+                    </div>
 
-                    <button
-                        type="submit"
-                        data-submit
-                        disabled
-                        class="mt-5 w-full rounded-xl bg-pit-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-pit-600/25 transition hover:bg-pit-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pit-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-pit-300 disabled:shadow-none"
-                    >
-                        Continue to your bag
-                    </button>
+                    <div class="border-t-2 border-pit-950 p-5">
+                        <ul data-legend class="space-y-2 empty:hidden"></ul>
 
-                    <p class="mt-3 text-center text-xs text-pit-500">
-                        Next you will add shipping details and pay. Nothing is ordered yet.
-                    </p>
+                        <dl class="mt-4 space-y-2 border-t-2 border-dashed border-pit-200 pt-4 text-sm">
+                            <div class="flex items-center justify-between">
+                                <dt class="font-medium text-pit-600">Subtotal</dt>
+                                <dd data-subtotal class="font-display font-bold tabular-nums">—</dd>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <dt class="font-medium text-pit-600">Shipping</dt>
+                                <dd data-shipping class="font-display font-bold tabular-nums">—</dd>
+                            </div>
+                            <div class="flex items-center justify-between border-t-2 border-pit-950 pt-2">
+                                <dt class="font-display text-base font-extrabold tracking-tight">Total</dt>
+                                <dd data-total class="font-display text-xl font-extrabold tabular-nums">—</dd>
+                            </div>
+                        </dl>
+
+                        <button type="submit" data-submit disabled class="btn-primary mt-5 w-full">
+                            Continue to your bag
+                        </button>
+
+                        <p class="mt-3 text-center text-xs font-medium text-pit-500">
+                            Next you will add shipping details and pay. Nothing is ordered yet.
+                        </p>
+                    </div>
                 </div>
             </aside>
         </form>
