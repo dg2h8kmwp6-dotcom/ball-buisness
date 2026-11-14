@@ -245,6 +245,7 @@ php artisan migrate --force && php artisan ballpit:sync-ball-types
 ```sh
 php artisan test        # 82 PHP tests: cart, checkout, both providers, admin, photos
 npm run test:pit        # the ball pit animation, headless
+npm run test:visual     # the same animation, rendered in a real browser
 vendor/bin/pint         # formatting
 ```
 
@@ -254,6 +255,20 @@ draws: that balls stay inside the pit, that colour proportions survive
 sampling, that a small accent colour never disappears, that the fill level
 tracks the order size, and that balls are painted back to front. It needs no
 test framework — just `node`.
+
+`npm run test:visual` renders `/order` in Chromium with Playwright, orders a
+few colours, and reads pixels back off the canvas. It needs the app running:
+
+```sh
+php artisan serve &
+npm run test:visual -- http://127.0.0.1:8000
+```
+
+It exists because the headless stub records `drawImage` calls and therefore
+**cannot see one shape painted over another**. A fill that swallowed the
+entire pit once passed all 24 headless checks while rendering an empty tub.
+The pixel test catches that class of bug; the headless one catches the
+physics and allocation. Keep both.
 
 ## The ball pit animation
 
@@ -276,9 +291,14 @@ Other behaviour worth knowing:
 
 - Balls pour in over ~1s regardless of batch size, shuffled so colours blend
   rather than arriving in layers.
-- Ball radius is derived from the pit's dimensions so a full budget fills
-  about three quarters of it at any canvas size, rather than being a magic
-  number tuned for one screen.
+- The pit is deliberately **shallow and wide**, and a full order heaps
+  *above* the rim. In this projection you see into the pit through its mouth,
+  so a deep bucket hides its own contents: anything resting well below the
+  rim sits behind the near wall. `OVERFILL` controls how far it brims over.
+- Ball radius is derived from the pit's dimensions so this holds at any
+  canvas size, rather than being a magic number tuned for one screen.
+- The rim is stroked in two halves — the far half behind the balls, the near
+  half over them — or the line is drawn straight across the pile.
 - Simulation stops ~3.5s after the last change. A dense pile jitters forever
   under positional correction and never reaches a true velocity rest, so the
   loop would otherwise never idle.

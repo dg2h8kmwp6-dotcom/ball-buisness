@@ -16,22 +16,23 @@ const HEIGHT = 420;
  * are written in the same terms the module draws in. */
 const SQUASH = 0.34;
 const DEPTH_SCALE = 0.16;
+const OVERFILL = 1.5;
 const BUDGET = 170;
 
 const PIT = {
     centerX: WIDTH / 2,
-    floorY: HEIGHT * 0.78,
-    depth: HEIGHT * 0.5,
-    radius: WIDTH * 0.39,
+    floorY: HEIGHT * 0.7,
+    depth: HEIGHT * 0.2,
+    radius: WIDTH * 0.42,
 };
-PIT.rimRadius = PIT.radius * 1.06;
+PIT.rimRadius = PIT.radius * 1.04;
 PIT.rimY = PIT.floorY - PIT.depth;
 
 const BALL_RADIUS = Math.min(
     WIDTH * 0.085,
     Math.max(
-        WIDTH * 0.03,
-        Math.cbrt((PIT.radius ** 2 * PIT.depth * 0.74 * 0.62 * 3) / (4 * BUDGET)),
+        WIDTH * 0.035,
+        Math.cbrt((PIT.radius ** 2 * PIT.depth * OVERFILL * 0.62 * 3) / (4 * BUDGET)),
     ),
 );
 
@@ -185,13 +186,17 @@ console.log('\n2. Balls settle inside the pit');
     const floorLimit = PIT.floorY + PIT.radius * SQUASH + BALL_RADIUS * 1.4;
     const sideLimit = PIT.rimRadius + BALL_RADIUS * 1.4;
 
+    // The pit brims over by design, so balls above the rim are expected;
+    // what must not happen is one left hanging well clear of the heap.
+    const ceiling = PIT.floorY - PIT.depth * OVERFILL - BALL_RADIUS * 4;
+
     const throughFloor = draws.filter((d) => d.cy > floorLimit);
     const throughWall = draws.filter((d) => Math.abs(d.cx - PIT.centerX) > sideLimit);
-    const airborne = draws.filter((d) => d.cy + d.r < PIT.rimY);
+    const airborne = draws.filter((d) => d.cy < ceiling);
 
     check('none below the floor', throughFloor.length === 0, `${throughFloor.length} escaped`);
     check('none through the walls', throughWall.length === 0, `${throughWall.length} escaped`);
-    check('none left mid-air', airborne.length === 0, `${airborne.length} airborne`);
+    check('none left floating above the heap', airborne.length === 0, `${airborne.length} airborne`);
 }
 
 console.log('\n3. Depth: balls are painted back to front');
@@ -277,18 +282,18 @@ console.log('\n6. Fill level tracks quantity up to a full pit');
     );
     check(
         'past the cap the pit stays full rather than growing',
-        Math.abs(heights[3].fill - heights[2].fill) < 14,
+        Math.abs(heights[3].fill - heights[2].fill) < 18,
         `${heights[2].fill.toFixed(0)}px vs ${heights[3].fill.toFixed(0)}px`,
     );
     check(
-        'a maxed-out order looks properly full (>60% of the pit)',
-        heights[3].fill / PIT.depth > 0.6,
-        `${((heights[3].fill / PIT.depth) * 100).toFixed(0)}% full`,
+        'a full order heaps above the rim, where it can be seen',
+        heights[3].fill > PIT.depth * 1.05,
+        `${((heights[3].fill / PIT.depth) * 100).toFixed(0)}% of pit depth`,
     );
     check(
-        'the pile never overflows the rim',
-        heights[3].fill < PIT.depth * 1.08,
-        `${heights[3].fill.toFixed(0)}px vs pit depth ${PIT.depth}px`,
+        'but does not tower over it',
+        heights[3].fill < PIT.depth * (OVERFILL + 0.6),
+        `${((heights[3].fill / PIT.depth) * 100).toFixed(0)}% of pit depth`,
     );
 }
 

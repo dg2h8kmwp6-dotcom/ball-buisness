@@ -35,6 +35,12 @@ const SETTLE_TIMEOUT = 3.5;
 /** How much the vertical axis is squashed to fake perspective. */
 const SQUASH = 0.34;
 
+/**
+ * How far a full order heaps above the rim, as a multiple of pit depth.
+ * Above 1 the pit brims over, which is what makes the balls visible.
+ */
+const OVERFILL = 1.5;
+
 /** How much nearer balls grow, as a fraction of their radius. */
 const DEPTH_SCALE = 0.16;
 
@@ -328,27 +334,32 @@ export function createBallPit(canvas, options = {}) {
         canvas.height = Math.round(height * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        const floorRadius = width * 0.39;
+        const floorRadius = width * 0.42;
 
         pit = {
             centerX: width / 2,
             // Screen y of the floor's centre, and the pit's internal height.
-            floorY: height * 0.78,
-            depth: height * 0.5,
+            //
+            // Deliberately shallow and wide. A deep bucket hides its contents:
+            // in this projection you see into the pit through the mouth, so
+            // anything resting well below the rim is behind the near wall.
+            floorY: height * 0.70,
+            depth: height * 0.2,
             radius: floorRadius,
             // The rim flares out very slightly, like a real tub.
-            rimRadius: floorRadius * 1.06,
+            rimRadius: floorRadius * 1.04,
         };
 
         pit.rimY = pit.floorY - pit.depth;
 
-        // Size the balls so a full budget fills roughly three quarters of the
-        // pit, derived rather than guessed so it holds at any canvas size.
-        const fillHeight = pit.depth * 0.74;
+        // Size the balls so a full budget heaps *above* the rim rather than
+        // settling out of sight. Derived from the pit's own dimensions so it
+        // holds at any canvas size.
+        const fillHeight = pit.depth * OVERFILL;
         const packing = 0.62;
         const cubed = (pit.radius ** 2 * fillHeight * packing * 3) / (4 * MAX_RENDERED_BALLS);
 
-        radius = Math.min(width * 0.085, Math.max(width * 0.03, Math.cbrt(cubed)));
+        radius = Math.min(width * 0.085, Math.max(width * 0.035, Math.cbrt(cubed)));
 
         rebuildSprites();
         lastChangeAt = clock;
@@ -588,12 +599,9 @@ export function createBallPit(canvas, options = {}) {
             ball.vz *= FLOOR_FRICTION;
         }
 
-        // Cylinder wall. Balls above the rim are still falling in, so they are
-        // only corralled once they drop below it.
-        if (ball.y > pit.depth + radius) {
-            return;
-        }
-
+        // Cylinder wall. Applied at every height: balls heap above the rim,
+        // and without this they roll off the crown and snap back in when they
+        // drop past it.
         const distance = Math.hypot(ball.x, ball.z);
         const limit = pit.radius - radius;
 
@@ -747,6 +755,14 @@ export function createBallPit(canvas, options = {}) {
         well.addColorStop(1, 'rgba(21,16,11,0.22)');
         ctx.fillStyle = well;
         ctx.fill();
+
+        // The far half of the rim, behind the balls. Stroking the whole
+        // ellipse after them would draw this line straight across the pile.
+        ctx.beginPath();
+        ctx.ellipse(centerX, rimY, rimRadius, rimRadius * SQUASH, 0, Math.PI, 0);
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 3;
+        ctx.stroke();
     }
 
     function drawBalls() {
@@ -788,10 +804,13 @@ export function createBallPit(canvas, options = {}) {
     function drawPitFront() {
         const { centerX, floorY, rimY, radius: r, rimRadius } = pit;
 
-        // Near wall, drawn over the balls.
+        // The near wall only, drawn over the balls. Both arcs must sweep the
+        // FRONT (lower) half of their ellipse: canvas angles increase
+        // clockwise on screen, so PI -> 0 needs counterclockwise=true or it
+        // takes the back half and the fill swallows the whole pit.
         ctx.beginPath();
         ctx.moveTo(centerX - rimRadius, rimY);
-        ctx.ellipse(centerX, rimY, rimRadius, rimRadius * SQUASH, 0, Math.PI, 0);
+        ctx.ellipse(centerX, rimY, rimRadius, rimRadius * SQUASH, 0, Math.PI, 0, true);
         ctx.lineTo(centerX + r, floorY);
         ctx.ellipse(centerX, floorY, r, r * SQUASH, 0, 0, Math.PI);
         ctx.closePath();
@@ -808,9 +827,9 @@ export function createBallPit(canvas, options = {}) {
         ctx.lineJoin = 'round';
         ctx.stroke();
 
-        // Rim lip.
+        // Near half of the rim lip, over the balls.
         ctx.beginPath();
-        ctx.ellipse(centerX, rimY, rimRadius, rimRadius * SQUASH, 0, 0, Math.PI * 2);
+        ctx.ellipse(centerX, rimY, rimRadius, rimRadius * SQUASH, 0, Math.PI, 0, true);
         ctx.strokeStyle = INK;
         ctx.lineWidth = 3;
         ctx.stroke();
