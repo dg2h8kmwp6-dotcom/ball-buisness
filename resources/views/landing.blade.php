@@ -35,20 +35,22 @@
                     </a>
                 </div>
 
-                <dl class="mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-pit-200 pt-8">
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-pit-600">Colours</dt>
-                        <dd class="mt-1 text-2xl font-bold">10</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-pit-600">Min order</dt>
-                        <dd class="mt-1 text-2xl font-bold">100</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-pit-600">Ball size</dt>
-                        <dd class="mt-1 text-2xl font-bold">70<span class="text-base font-semibold">mm</span></dd>
-                    </div>
-                </dl>
+                @if ($colourCount > 0)
+                    <dl class="mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-pit-200 pt-8">
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-pit-600">Colours</dt>
+                            <dd class="mt-1 text-2xl font-bold">{{ $colourCount }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-pit-600">Min order</dt>
+                            <dd class="mt-1 text-2xl font-bold">{{ number_format($minimumQuantity) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-pit-600">Ball size</dt>
+                            <dd class="mt-1 text-2xl font-bold">{{ $ballDiameter }}<span class="text-base font-semibold">mm</span></dd>
+                        </div>
+                    </dl>
+                @endif
             </div>
 
             <div class="relative">

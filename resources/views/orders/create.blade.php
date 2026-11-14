@@ -106,7 +106,7 @@
 
                             <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-pit-100 pt-3">
                                 <span class="text-xs font-medium uppercase tracking-wide text-pit-500">Quick add</span>
-                                @foreach ([500, 1000, 5000] as $amount)
+                                @foreach (config('ballpit.quick_add_quantities') as $amount)
                                     <button
                                         type="button"
                                         data-quick-add="{{ $amount }}"

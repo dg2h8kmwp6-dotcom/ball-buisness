@@ -47,6 +47,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Quick-add amounts
+    |--------------------------------------------------------------------------
+    |
+    | The one-tap "+N" buttons on each ball type in the order builder. The
+    | +/- stepper uses each ball type's own quantity_step instead, which the
+    | admin area can set per colour.
+    |
+    */
+
+    'quick_add_quantities' => [5, 10, 20, 50],
+
+    /*
+    |--------------------------------------------------------------------------
     | Checkout payment methods
     |--------------------------------------------------------------------------
     |

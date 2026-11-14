@@ -113,8 +113,8 @@ class BallTypeSeeder extends Seeder
                 ...$ballType,
                 'slug' => $slug,
                 'diameter_mm' => 70,
-                'min_quantity' => 100,
-                'quantity_step' => 100,
+                'min_quantity' => 10,
+                'quantity_step' => 10,
                 'sort_order' => $index,
                 'is_active' => true,
             ];

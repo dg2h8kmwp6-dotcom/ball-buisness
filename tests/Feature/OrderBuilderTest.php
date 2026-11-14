@@ -24,6 +24,49 @@ class OrderBuilderTest extends TestCase
         $response->assertSee('quantities['.$active->id.']', escape: false);
     }
 
+    public function test_the_stepper_uses_each_ball_types_own_quantity_step(): void
+    {
+        $ballType = BallType::factory()->create(['quantity_step' => 10]);
+
+        $response = $this->get(route('order.create'));
+
+        $response->assertOk();
+        $response->assertSee('data-step="10"', escape: false);
+        // The buttons announce the step to screen readers.
+        $response->assertSee('quantity by 10', escape: false);
+    }
+
+    public function test_the_quick_add_buttons_come_from_config(): void
+    {
+        config(['ballpit.quick_add_quantities' => [5, 10, 20, 50]]);
+
+        BallType::factory()->create();
+
+        $response = $this->get(route('order.create'));
+
+        $response->assertOk();
+
+        foreach ([5, 10, 20, 50] as $amount) {
+            $response->assertSee('data-quick-add="'.$amount.'"', escape: false);
+        }
+
+        // The old bulk amounts are gone.
+        $response->assertDontSee('data-quick-add="500"', escape: false);
+        $response->assertDontSee('data-quick-add="5000"', escape: false);
+    }
+
+    public function test_a_small_order_is_accepted(): void
+    {
+        $ballType = BallType::factory()->create(['quantity_step' => 10]);
+
+        $response = $this->post(route('order.store'), [
+            'quantities' => [$ballType->id => 5],
+        ]);
+
+        $response->assertRedirect(route('checkout.show'));
+        $response->assertSessionHas(Cart::SESSION_KEY, [$ballType->id => 5]);
+    }
+
     public function test_the_order_page_prefills_quantities_already_in_the_bag(): void
     {
         $ballType = BallType::factory()->create();
