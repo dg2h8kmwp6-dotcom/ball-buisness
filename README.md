@@ -1,4 +1,4 @@
-# Ball Pit Pallette
+# Ball Pit Palette
 
 A storefront for custom plastic ball-pit orders. Customers pick colours and
 quantities, watch their mix pour into a bag, and check out through Stripe.
