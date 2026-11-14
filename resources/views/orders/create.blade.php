@@ -148,7 +148,7 @@
             {{-- The bag --}}
             <aside class="lg:sticky lg:top-6 lg:self-start">
                 <div class="rounded-2xl border border-pit-200 bg-gradient-to-b from-white to-pit-100 p-5 shadow-sm">
-                    <h2 class="text-sm font-semibold uppercase tracking-wide text-pit-600">Your bag</h2>
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-pit-600">Bag preview</h2>
 
                     <div class="relative mt-3">
                         <canvas
@@ -162,7 +162,7 @@
                             data-bag-empty
                             class="pointer-events-none absolute inset-x-6 bottom-1/4 text-center text-sm text-pit-500"
                         >
-                            Your bag is empty. Add some balls and watch them drop in.
+                            Nothing in the bag yet. Add some balls and watch them drop in.
                         </p>
                     </div>
 
@@ -195,11 +195,11 @@
                         disabled
                         class="mt-5 w-full rounded-xl bg-pit-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-pit-600/25 transition hover:bg-pit-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pit-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-pit-300 disabled:shadow-none"
                     >
-                        Place order
+                        Continue to your bag
                     </button>
 
                     <p class="mt-3 text-center text-xs text-pit-500">
-                        You will review everything before paying.
+                        Next you will add shipping details and pay. Nothing is ordered yet.
                     </p>
                 </div>
             </aside>

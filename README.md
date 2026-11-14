@@ -36,15 +36,36 @@ them.
 | Step | Route | What happens |
 | --- | --- | --- |
 | 1 | `GET /` | Landing page with the **Order now** call to action |
-| 2 | `GET /order` | Pick colours and quantities; the bag animates the mix |
+| 2 | `GET /order` | Build the mix: colours and quantities, with the bag animating |
 | 3 | `POST /order` | Selection is validated and stored in the session cart |
-| 4 | `GET /checkout` | Review the order, collect name and email |
+| 4 | `GET /checkout` | The bag: review, contact details, shipping address, pay |
 | 5 | `POST /checkout` | A `pending` order is written, then the chosen provider opens |
 | 6 | `GET /checkout/success` or `/checkout/paypal/return` | Confirms payment and empties the cart |
 | 7 | `POST /stripe/webhook` or `/paypal/webhook` | Marks the order paid — the source of truth |
 
+`/order` builds the mix and hands off; **`/checkout` (the bag) is the only
+place an order is actually placed.** An empty bag renders its own page rather
+than redirecting to the builder, which previously made the two look like the
+same page.
+
 Orders snapshot the ball name, colour, and unit price at the time of purchase,
 so later catalogue edits never rewrite past orders.
+
+### Shipping
+
+The shipping address is collected by us at checkout, not by the payment
+provider, and stored in discrete columns on the order so fulfilment can read
+and filter them. Both providers are then told the address rather than asking
+for it again: Stripe receives it as `payment_intent_data.shipping` so it shows
+on the payment in the dashboard, and PayPal receives it with
+`shipping_preference: SET_PROVIDED_ADDRESS` so the buyer cannot silently
+substitute another one.
+
+Destinations come from `shipping_countries` in `config/ballpit.php` (US and
+Canada by default) with a matching `region_labels` entry for the State vs
+Province wording. Note that `shipping_flat_cents` is one flat rate for every
+destination on that list, so review it before adding countries that cost more
+to reach.
 
 Payment state is driven by the webhook, not the browser redirect: a customer
 who closes the tab after paying still gets a paid order. The success page

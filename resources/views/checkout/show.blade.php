@@ -28,56 +28,124 @@
             <form method="POST" action="{{ route('checkout.store') }}" class="space-y-6">
                 @csrf
 
+                {{-- Contact --}}
                 <div class="rounded-2xl border border-pit-200 bg-white p-6 shadow-sm">
-                    <h2 class="font-semibold">Where should we send it?</h2>
+                    <h2 class="font-semibold">Contact</h2>
+                    <p class="mt-1 text-sm text-pit-600">Your receipt and tracking go here.</p>
+
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                        <x-checkout-field name="customer_name" label="Full name" autocomplete="name" required />
+                        <x-checkout-field name="customer_email" label="Email address" type="email" autocomplete="email" required />
+                    </div>
+                </div>
+
+                {{-- Shipping --}}
+                <div class="rounded-2xl border border-pit-200 bg-white p-6 shadow-sm">
+                    <h2 class="font-semibold">Shipping address</h2>
                     <p class="mt-1 text-sm text-pit-600">
-                        We collect the shipping address on the secure payment page.
+                        Where should the balls go? Pit balls ship in bulk cartons, so a kerbside or
+                        loading-dock address works best.
                     </p>
 
-                    <div class="mt-5 space-y-4">
-                        <div>
-                            <label for="customer_name" class="block text-sm font-medium text-pit-800">
-                                Full name
-                            </label>
-                            <input
-                                id="customer_name"
-                                name="customer_name"
-                                type="text"
-                                autocomplete="name"
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <x-checkout-field
+                                name="shipping_name"
+                                label="Recipient name"
+                                autocomplete="shipping name"
                                 required
-                                value="{{ old('customer_name') }}"
+                            />
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <x-checkout-field
+                                name="shipping_line1"
+                                label="Street address"
+                                autocomplete="shipping address-line1"
+                                required
+                            />
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <x-checkout-field
+                                name="shipping_line2"
+                                label="Apartment, suite, unit"
+                                autocomplete="shipping address-line2"
+                                hint="Optional"
+                            />
+                        </div>
+
+                        <x-checkout-field
+                            name="shipping_city"
+                            label="City"
+                            autocomplete="shipping address-level2"
+                            required
+                        />
+
+                        <x-checkout-field
+                            name="shipping_region"
+                            label="{{ $regionLabel }}"
+                            autocomplete="shipping address-level1"
+                            required
+                        />
+
+                        <x-checkout-field
+                            name="shipping_postal_code"
+                            label="Postal code"
+                            autocomplete="shipping postal-code"
+                            required
+                        />
+
+                        <div>
+                            <label for="shipping_country" class="block text-sm font-medium text-pit-800">
+                                Country
+                            </label>
+                            <select
+                                id="shipping_country"
+                                name="shipping_country"
+                                autocomplete="shipping country"
+                                required
                                 @class([
                                     'mt-1.5 block w-full rounded-lg border bg-white px-3 py-2.5 shadow-sm focus:outline-none focus:ring-2',
-                                    'border-red-400 focus:border-red-500 focus:ring-red-500/30' => $errors->has('customer_name'),
-                                    'border-pit-300 focus:border-pit-500 focus:ring-pit-500/30' => ! $errors->has('customer_name'),
+                                    'border-red-400 focus:border-red-500 focus:ring-red-500/30' => $errors->has('shipping_country'),
+                                    'border-pit-300 focus:border-pit-500 focus:ring-pit-500/30' => ! $errors->has('shipping_country'),
                                 ])
                             >
-                            @error('customer_name')
+                                @foreach ($shippingCountries as $code => $name)
+                                    <option value="{{ $code }}" @selected(old('shipping_country', array_key_first($shippingCountries)) === $code)>
+                                        {{ $name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('shipping_country')
                                 <p class="mt-1.5 text-sm text-red-700">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <div>
-                            <label for="customer_email" class="block text-sm font-medium text-pit-800">
-                                Email address
+                        <div class="sm:col-span-2">
+                            <x-checkout-field
+                                name="shipping_phone"
+                                label="Phone"
+                                type="tel"
+                                autocomplete="shipping tel"
+                                hint="Optional — couriers use it for bulk deliveries."
+                            />
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label for="delivery_notes" class="block text-sm font-medium text-pit-800">
+                                Delivery notes
                             </label>
-                            <input
-                                id="customer_email"
-                                name="customer_email"
-                                type="email"
-                                autocomplete="email"
-                                required
-                                value="{{ old('customer_email') }}"
-                                @class([
-                                    'mt-1.5 block w-full rounded-lg border bg-white px-3 py-2.5 shadow-sm focus:outline-none focus:ring-2',
-                                    'border-red-400 focus:border-red-500 focus:ring-red-500/30' => $errors->has('customer_email'),
-                                    'border-pit-300 focus:border-pit-500 focus:ring-pit-500/30' => ! $errors->has('customer_email'),
-                                ])
-                            >
-                            @error('customer_email')
+                            <p class="mt-0.5 text-xs text-pit-500">Optional — gate codes, access hours, where to leave it.</p>
+                            <textarea
+                                id="delivery_notes"
+                                name="delivery_notes"
+                                rows="2"
+                                class="mt-1.5 block w-full rounded-lg border border-pit-300 px-3 py-2.5 shadow-sm focus:border-pit-500 focus:outline-none focus:ring-2 focus:ring-pit-500/30"
+                            >{{ old('delivery_notes') }}</textarea>
+                            @error('delivery_notes')
                                 <p class="mt-1.5 text-sm text-red-700">{{ $message }}</p>
                             @enderror
-                            <p class="mt-1.5 text-sm text-pit-600">Your receipt and tracking go here.</p>
                         </div>
                     </div>
                 </div>

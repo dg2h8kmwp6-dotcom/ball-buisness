@@ -17,12 +17,16 @@ class CheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_checkout_page_redirects_when_the_bag_is_empty(): void
+    public function test_an_empty_bag_gets_its_own_page_pointing_at_the_builder(): void
     {
         $response = $this->get(route('checkout.show'));
 
-        $response->assertRedirect(route('order.create'));
-        $response->assertSessionHas('status');
+        // Deliberately not a redirect to the builder: that made the bag and
+        // order pages look like the same page.
+        $response->assertOk();
+        $response->assertSee('Your bag is empty');
+        $response->assertSee(route('order.create'));
+        $response->assertDontSee('Choose your balls');
     }
 
     public function test_the_checkout_page_summarises_the_bag(): void
@@ -68,8 +72,7 @@ class CheckoutTest extends TestCase
         $response = $this
             ->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'stripe',
             ]);
 
@@ -90,8 +93,7 @@ class CheckoutTest extends TestCase
         $response = $this
             ->withSession([Cart::SESSION_KEY => [$red->id => 1000, $blue->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'stripe',
             ]);
 
@@ -124,8 +126,7 @@ class CheckoutTest extends TestCase
 
         $this->withSession([Cart::SESSION_KEY => [$ballType->id => 300]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'stripe',
             ]);
 
@@ -147,8 +148,7 @@ class CheckoutTest extends TestCase
 
         $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
             ])
             ->assertSessionHasErrors('provider');
 
@@ -161,8 +161,7 @@ class CheckoutTest extends TestCase
 
         $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'bitcoin',
             ])
             ->assertSessionHasErrors('provider');
@@ -231,6 +230,132 @@ class CheckoutTest extends TestCase
         $response = $this->get(route('checkout.success', ['session_id' => 'cs_test_unknown']));
 
         $response->assertRedirect(route('home'));
+    }
+
+    public function test_the_shipping_address_is_required(): void
+    {
+        config(['cashier.secret' => 'sk_test_fake']);
+
+        $ballType = BallType::factory()->create();
+
+        $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
+            ->post(route('checkout.store'), [
+                'customer_name' => 'Ada Lovelace',
+                'customer_email' => 'ada@example.com',
+                'provider' => 'stripe',
+            ])
+            ->assertSessionHasErrors([
+                'shipping_name',
+                'shipping_line1',
+                'shipping_city',
+                'shipping_region',
+                'shipping_postal_code',
+                'shipping_country',
+            ]);
+
+        $this->assertSame(0, Order::count());
+    }
+
+    public function test_the_shipping_address_is_stored_on_the_order(): void
+    {
+        config(['cashier.secret' => 'sk_test_fake']);
+
+        $ballType = BallType::factory()->create();
+        $this->fakeStripeCheckout();
+
+        $this->withSession([Cart::SESSION_KEY => [$ballType->id => 20]])
+            ->post(route('checkout.store'), [
+                ...$this->validCheckout(),
+                'provider' => 'stripe',
+            ]);
+
+        $order = Order::sole();
+
+        $this->assertSame('Grace Hopper', $order->shipping_name);
+        $this->assertSame('1 Ball Pit Way', $order->shipping_line1);
+        $this->assertSame('Unit 4', $order->shipping_line2);
+        $this->assertSame('Austin', $order->shipping_city);
+        $this->assertSame('TX', $order->shipping_region);
+        $this->assertSame('78701', $order->shipping_postal_code);
+        $this->assertSame('US', $order->shipping_country);
+        $this->assertSame('555-0100', $order->shipping_phone);
+        $this->assertSame('Leave at the loading dock.', $order->delivery_notes);
+        $this->assertTrue($order->hasShippingAddress());
+    }
+
+    public function test_an_unsupported_shipping_country_is_refused(): void
+    {
+        config([
+            'cashier.secret' => 'sk_test_fake',
+            'ballpit.shipping_countries' => ['US' => 'United States'],
+        ]);
+
+        $ballType = BallType::factory()->create();
+
+        $this->withSession([Cart::SESSION_KEY => [$ballType->id => 20]])
+            ->post(route('checkout.store'), [
+                ...$this->validCheckout(),
+                'shipping_country' => 'FR',
+                'provider' => 'stripe',
+            ])
+            ->assertSessionHasErrors('shipping_country');
+
+        $this->assertSame(0, Order::count());
+    }
+
+    public function test_the_collected_address_is_passed_to_stripe_so_it_is_not_asked_twice(): void
+    {
+        config(['cashier.secret' => 'sk_test_fake']);
+
+        $order = Order::factory()->create([
+            'shipping_name' => 'Grace Hopper',
+            'shipping_line1' => '1 Ball Pit Way',
+            'shipping_city' => 'Austin',
+            'shipping_region' => 'TX',
+            'shipping_postal_code' => '78701',
+            'shipping_country' => 'US',
+        ]);
+
+        $options = (new class extends StripeCheckout
+        {
+            /** @return array<string, mixed> */
+            public function optionsFor(Order $order): array
+            {
+                return $this->sessionOptions($order);
+            }
+        })->optionsFor($order);
+
+        $shipping = $options['payment_intent_data']['shipping'];
+
+        $this->assertSame('Grace Hopper', $shipping['name']);
+        $this->assertSame('1 Ball Pit Way', $shipping['address']['line1']);
+        $this->assertSame('Austin', $shipping['address']['city']);
+        $this->assertSame('TX', $shipping['address']['state']);
+        $this->assertSame('US', $shipping['address']['country']);
+        // We collect it ourselves, so Stripe must not ask again.
+        $this->assertArrayNotHasKey('shipping_address_collection', $options);
+    }
+
+    /**
+     * A complete set of contact and shipping details.
+     *
+     * @return array<string, string>
+     */
+    protected function validCheckout(): array
+    {
+        return [
+            'customer_name' => 'Ada Lovelace',
+            'customer_email' => 'ada@example.com',
+            'shipping_name' => 'Grace Hopper',
+            'shipping_line1' => '1 Ball Pit Way',
+            'shipping_line2' => 'Unit 4',
+            'shipping_city' => 'Austin',
+            'shipping_region' => 'TX',
+            'shipping_postal_code' => '78701',
+            'shipping_country' => 'US',
+            'shipping_phone' => '555-0100',
+            'delivery_notes' => 'Leave at the loading dock.',
+        ];
     }
 
     /**

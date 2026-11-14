@@ -51,8 +51,7 @@ class PayPalCheckoutTest extends TestCase
 
         $response = $this->withSession([Cart::SESSION_KEY => [$red->id => 1000, $blue->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'paypal',
             ]);
 
@@ -80,8 +79,7 @@ class PayPalCheckoutTest extends TestCase
 
         $this->withSession([Cart::SESSION_KEY => [$red->id => 1000, $blue->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'paypal',
             ]);
 
@@ -128,8 +126,7 @@ class PayPalCheckoutTest extends TestCase
 
         $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'paypal',
             ]);
 
@@ -239,8 +236,7 @@ class PayPalCheckoutTest extends TestCase
 
         $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'paypal',
             ])
             ->assertRedirect()
@@ -259,8 +255,7 @@ class PayPalCheckoutTest extends TestCase
 
         $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
             ->post(route('checkout.store'), [
-                'customer_name' => 'Ada Lovelace',
-                'customer_email' => 'ada@example.com',
+                ...$this->validCheckout(),
                 'provider' => 'paypal',
             ])
             ->assertRedirect()
@@ -283,8 +278,7 @@ class PayPalCheckoutTest extends TestCase
         foreach (range(1, 2) as $ignored) {
             $this->withSession([Cart::SESSION_KEY => [$ballType->id => 500]])
                 ->post(route('checkout.store'), [
-                    'customer_name' => 'Ada Lovelace',
-                    'customer_email' => 'ada@example.com',
+                    ...$this->validCheckout(),
                     'provider' => 'paypal',
                 ]);
         }
@@ -294,6 +288,64 @@ class PayPalCheckoutTest extends TestCase
             ->count();
 
         $this->assertSame(1, $tokenCalls);
+    }
+
+    public function test_the_collected_address_is_sent_to_paypal_and_locked(): void
+    {
+        $this->fakePayPal([
+            '*/v2/checkout/orders' => Http::response([
+                'id' => 'PP-SHIP',
+                'links' => [['rel' => 'payer-action', 'href' => 'https://paypal.test/approve']],
+            ]),
+        ]);
+
+        $ballType = BallType::factory()->create();
+
+        $this->withSession([Cart::SESSION_KEY => [$ballType->id => 20]])
+            ->post(route('checkout.store'), [
+                ...$this->validCheckout(),
+                'provider' => 'paypal',
+            ]);
+
+        Http::assertSent(function (Request $request): bool {
+            if (! str_contains($request->url(), '/v2/checkout/orders')) {
+                return false;
+            }
+
+            $body = $request->data();
+            $shipping = $body['purchase_units'][0]['shipping'] ?? null;
+
+            return $shipping !== null
+                && $shipping['name']['full_name'] === 'Grace Hopper'
+                && $shipping['address']['address_line_1'] === '1 Ball Pit Way'
+                // admin_area_2 is the city, admin_area_1 the state.
+                && $shipping['address']['admin_area_2'] === 'Austin'
+                && $shipping['address']['admin_area_1'] === 'TX'
+                && $shipping['address']['postal_code'] === '78701'
+                && $shipping['address']['country_code'] === 'US'
+                // Having supplied one, PayPal must not offer another.
+                && $body['payment_source']['paypal']['experience_context']['shipping_preference'] === 'SET_PROVIDED_ADDRESS';
+        });
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function validCheckout(): array
+    {
+        return [
+            'customer_name' => 'Ada Lovelace',
+            'customer_email' => 'ada@example.com',
+            'shipping_name' => 'Grace Hopper',
+            'shipping_line1' => '1 Ball Pit Way',
+            'shipping_line2' => 'Unit 4',
+            'shipping_city' => 'Austin',
+            'shipping_region' => 'TX',
+            'shipping_postal_code' => '78701',
+            'shipping_country' => 'US',
+            'shipping_phone' => '555-0100',
+            'delivery_notes' => 'Leave at the loading dock.',
+        ];
     }
 
     /**

@@ -51,6 +51,23 @@
                 </div>
             </dl>
 
+            @if ($order->hasShippingAddress())
+                <div class="mx-auto mt-6 max-w-sm border-t border-pit-200 pt-6 text-left">
+                    <h2 class="text-xs font-medium uppercase tracking-wide text-pit-600">Shipping to</h2>
+                    <address class="mt-2 text-sm not-italic leading-relaxed text-pit-800">
+                        @foreach ($order->shippingAddressLines() as $line)
+                            {{ $line }}<br>
+                        @endforeach
+                    </address>
+
+                    @if ($order->delivery_notes)
+                        <p class="mt-2 text-sm text-pit-600">
+                            <span class="font-medium">Notes:</span> {{ $order->delivery_notes }}
+                        </p>
+                    @endif
+                </div>
+            @endif
+
             <ul class="mx-auto mt-6 max-w-sm space-y-2 border-t border-pit-200 pt-6 text-left">
                 @foreach ($order->items as $item)
                     <li class="flex items-center gap-3 text-sm">

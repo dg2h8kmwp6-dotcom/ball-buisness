@@ -21,6 +21,15 @@ class Order extends Model
         'payment_provider',
         'customer_name',
         'customer_email',
+        'shipping_name',
+        'shipping_phone',
+        'shipping_line1',
+        'shipping_line2',
+        'shipping_city',
+        'shipping_region',
+        'shipping_postal_code',
+        'shipping_country',
+        'delivery_notes',
         'subtotal_cents',
         'shipping_cents',
         'total_cents',
@@ -62,6 +71,33 @@ class Order extends Model
         } while (static::where('reference', $reference)->exists());
 
         return $reference;
+    }
+
+    /**
+     * The shipping address as display lines, skipping anything not given.
+     *
+     * @return list<string>
+     */
+    public function shippingAddressLines(): array
+    {
+        $country = config('ballpit.shipping_countries')[$this->shipping_country] ?? $this->shipping_country;
+
+        return array_values(array_filter([
+            $this->shipping_name,
+            $this->shipping_line1,
+            $this->shipping_line2,
+            trim(implode(' ', array_filter([
+                $this->shipping_city ? $this->shipping_city.',' : null,
+                $this->shipping_region,
+                $this->shipping_postal_code,
+            ]))),
+            $country,
+        ], fn (?string $line): bool => filled($line)));
+    }
+
+    public function hasShippingAddress(): bool
+    {
+        return filled($this->shipping_line1) && filled($this->shipping_city);
     }
 
     public function totalBalls(): int

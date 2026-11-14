@@ -27,12 +27,12 @@ class CheckoutController extends Controller
     /**
      * Review the order and collect contact details.
      */
-    public function show(Cart $cart): View|RedirectResponse
+    public function show(Cart $cart): View
     {
+        // An empty bag gets its own page rather than a redirect to the
+        // builder, which made the two pages look like the same thing.
         if ($cart->isEmpty()) {
-            return redirect()
-                ->route('order.create')
-                ->with('status', 'Your bag is empty — pick some balls to get started.');
+            return view('checkout.empty');
         }
 
         return view('checkout.show', [
@@ -43,6 +43,8 @@ class CheckoutController extends Controller
             'totalBalls' => $cart->totalBalls(),
             'stripeEnabled' => $this->stripeConfigured(),
             'paypalEnabled' => $this->paypal->isConfigured(),
+            'shippingCountries' => config('ballpit.shipping_countries'),
+            'regionLabel' => $this->regionLabel(),
         ]);
     }
 
@@ -202,6 +204,16 @@ class CheckoutController extends Controller
         return back()->with('error', 'We could not reach our payment provider. Please try again in a moment.');
     }
 
+    /**
+     * Label for the region field, matching the default shipping country.
+     */
+    protected function regionLabel(): string
+    {
+        $default = array_key_first(config('ballpit.shipping_countries'));
+
+        return config('ballpit.region_labels')[$default] ?? 'State or province';
+    }
+
     protected function stripeConfigured(): bool
     {
         return filled(config('cashier.secret'));
@@ -234,11 +246,10 @@ class CheckoutController extends Controller
     ): Order {
         return DB::transaction(function () use ($request, $cart, $provider): Order {
             $order = Order::create([
+                ...$request->orderAttributes(),
                 'reference' => Order::generateReference(),
                 'status' => OrderStatus::Pending,
                 'payment_provider' => $provider,
-                'customer_name' => $request->validated('customer_name'),
-                'customer_email' => $request->validated('customer_email'),
                 'subtotal_cents' => $cart->subtotalCents(),
                 'shipping_cents' => $cart->shippingCents(),
                 'total_cents' => $cart->totalCents(),

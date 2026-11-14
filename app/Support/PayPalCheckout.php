@@ -136,7 +136,7 @@ class PayPalCheckout
         return [
             'intent' => 'CAPTURE',
             'purchase_units' => [
-                [
+                array_filter([
                     'reference_id' => $order->reference,
                     'custom_id' => (string) $order->id,
                     'invoice_id' => $order->reference,
@@ -144,6 +144,7 @@ class PayPalCheckout
                     'items' => $order->items->map(
                         fn (OrderItem $item): array => $this->item($item, $currency)
                     )->all(),
+                    'shipping' => $this->shipping($order),
                     'amount' => [
                         'currency_code' => $currency,
                         'value' => $this->money($order->total_cents),
@@ -158,14 +159,18 @@ class PayPalCheckout
                             ] : null,
                         ]),
                     ],
-                ],
+                ], fn (mixed $value): bool => $value !== null),
             ],
             'payment_source' => [
                 'paypal' => [
                     'experience_context' => [
                         'brand_name' => Str::limit((string) config('ballpit.brand_name'), 127, ''),
                         'landing_page' => 'LOGIN',
-                        'shipping_preference' => 'GET_FROM_FILE',
+                        // We already collected the address, so PayPal shows
+                        // ours rather than letting the buyer pick another.
+                        'shipping_preference' => $order->hasShippingAddress()
+                            ? 'SET_PROVIDED_ADDRESS'
+                            : 'GET_FROM_FILE',
                         // Show "Pay Now" rather than "Continue", since we
                         // capture immediately on return.
                         'user_action' => 'PAY_NOW',
@@ -174,6 +179,35 @@ class PayPalCheckout
                     ],
                 ],
             ],
+        ];
+    }
+
+    /**
+     * The shipping block PayPal shows the buyer, or null when we have no
+     * address and PayPal should collect one itself.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function shipping(Order $order): ?array
+    {
+        if (! $order->hasShippingAddress()) {
+            return null;
+        }
+
+        return [
+            'type' => 'SHIPPING',
+            'name' => [
+                'full_name' => Str::limit($order->shipping_name ?? (string) $order->customer_name, 300, ''),
+            ],
+            'address' => array_filter([
+                'address_line_1' => $order->shipping_line1,
+                'address_line_2' => $order->shipping_line2,
+                // PayPal's admin_area_2 is the city, admin_area_1 the state.
+                'admin_area_2' => $order->shipping_city,
+                'admin_area_1' => $order->shipping_region,
+                'postal_code' => $order->shipping_postal_code,
+                'country_code' => $order->shipping_country,
+            ], fn (?string $value): bool => filled($value)),
         ];
     }
 

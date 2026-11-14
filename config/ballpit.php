@@ -60,6 +60,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Shipping destinations
+    |--------------------------------------------------------------------------
+    |
+    | Countries we will ship to, as ISO 3166-1 alpha-2 codes. Add to this list
+    | to open up new destinations.
+    |
+    | Note that `shipping_flat_cents` above is a single flat rate for every
+    | destination on this list, so review it before adding countries that cost
+    | materially more to reach.
+    |
+    */
+
+    'shipping_countries' => [
+        'US' => 'United States',
+        'CA' => 'Canada',
+    ],
+
+    // Label used for the region/state field, per country.
+    'region_labels' => [
+        'US' => 'State',
+        'CA' => 'Province',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Checkout payment methods
     |--------------------------------------------------------------------------
     |

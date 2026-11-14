@@ -84,6 +84,24 @@ class StripeCheckout
             ],
         ];
 
+        // We collect the shipping address ourselves, so Stripe is told not to
+        // ask again. Passing it along anyway makes it visible on the payment
+        // in the Stripe dashboard, which is what fulfilment looks at.
+        if ($order->hasShippingAddress()) {
+            $options['payment_intent_data']['shipping'] = [
+                'name' => $order->shipping_name ?? $order->customer_name,
+                'phone' => $order->shipping_phone,
+                'address' => array_filter([
+                    'line1' => $order->shipping_line1,
+                    'line2' => $order->shipping_line2,
+                    'city' => $order->shipping_city,
+                    'state' => $order->shipping_region,
+                    'postal_code' => $order->shipping_postal_code,
+                    'country' => $order->shipping_country,
+                ], fn (?string $value): bool => filled($value)),
+            ];
+        }
+
         /** @var list<string> $paymentMethodTypes */
         $paymentMethodTypes = config('ballpit.payment_method_types', []);
 
