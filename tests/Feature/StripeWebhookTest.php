@@ -13,6 +13,33 @@ class StripeWebhookTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Cashier verifies the signature upstream; the listener only acts
+        // when a secret is configured, so tests must supply one.
+        config(['cashier.webhook.secret' => 'whsec_test']);
+    }
+
+    public function test_webhooks_are_ignored_when_no_signing_secret_is_configured(): void
+    {
+        config(['cashier.webhook.secret' => null]);
+
+        $order = Order::factory()->create(['stripe_checkout_session_id' => 'cs_test_unsigned']);
+
+        $this->handleWebhook('checkout.session.completed', [
+            'id' => 'cs_test_unsigned',
+            'payment_status' => 'paid',
+            'payment_intent' => 'pi_forged',
+            'metadata' => ['order_id' => (string) $order->id],
+        ]);
+
+        // An unverifiable event must not be able to mark an order paid.
+        $this->assertSame(OrderStatus::Pending, $order->refresh()->status);
+        $this->assertNull($order->refresh()->paid_at);
+    }
+
     public function test_a_completed_checkout_session_marks_the_order_paid(): void
     {
         $order = Order::factory()->create(['stripe_checkout_session_id' => 'cs_test_1']);

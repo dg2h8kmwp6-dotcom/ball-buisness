@@ -18,6 +18,17 @@ class FulfillOrderOnPayment
 {
     public function handle(WebhookReceived $event): void
     {
+        // Cashier only verifies signatures when a webhook secret is set, so
+        // without one this endpoint would accept a forged "payment
+        // succeeded" and mark an order paid. Refuse rather than trust it.
+        if (blank(config('cashier.webhook.secret'))) {
+            Log::warning('Ignored a Stripe webhook because STRIPE_WEBHOOK_SECRET is not set, so its signature could not be verified.', [
+                'event_type' => $event->payload['type'] ?? null,
+            ]);
+
+            return;
+        }
+
         match ($event->payload['type'] ?? null) {
             'checkout.session.completed' => $this->handleCheckoutCompleted($event->payload),
             'checkout.session.async_payment_succeeded' => $this->handleCheckoutCompleted($event->payload),

@@ -98,6 +98,17 @@ when `STRIPE_WEBHOOK_SECRET` is set. `App\Listeners\FulfillOrderOnPayment`
 handles the `checkout.session.*` events; its `TODO` marks where the
 confirmation email and warehouse notification belong.
 
+> **`STRIPE_WEBHOOK_SECRET` is required, not optional.** Cashier only verifies
+> signatures when it is set, so without it the endpoint would accept a forged
+> "payment succeeded" and mark an order paid. The listener therefore refuses to
+> act on any webhook while the secret is missing, and logs a warning — so an
+> unconfigured environment fulfils nothing rather than fulfilling anything.
+
+Payment methods are **not** listed in the API call: `payment_method_types` is
+deliberately never sent, which keeps Stripe's dynamic payment methods on so
+each customer is offered the most relevant of whatever is enabled on the
+account. Change what you accept in the Stripe Dashboard, not in code.
+
 ### PayPal
 
 PayPal runs as a **direct integration against the PayPal Orders v2 API**, using
@@ -156,8 +167,8 @@ Checked against Stripe's docs on 2026-11-14, for a **US Stripe account**:
   PayPal" yourself — the same work as going direct, plus a gatekeeper.
 
 If you ever move to a European Stripe entity, enabling PayPal in the Stripe
-dashboard and setting `BALLPIT_PAYMENT_METHOD_TYPES=card,paypal` would let
-Stripe handle it instead, and the direct integration could be retired.
+Dashboard would be enough for Stripe to offer it, and the direct integration
+could be retired.
 
 #### No SDK
 

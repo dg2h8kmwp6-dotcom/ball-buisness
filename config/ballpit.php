@@ -83,22 +83,4 @@ return [
         'CA' => 'Province',
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Checkout payment methods
-    |--------------------------------------------------------------------------
-    |
-    | Payment method types offered on the Stripe Checkout session. Leave this
-    | empty to let Stripe decide automatically based on the payment methods
-    | enabled in your dashboard (recommended for most accounts).
-    |
-    | Note: PayPal through Stripe is only available to Stripe accounts based
-    | in supported European countries. See the "Payments" section of README.md.
-    |
-    */
-
-    'payment_method_types' => array_values(array_filter(
-        explode(',', (string) env('BALLPIT_PAYMENT_METHOD_TYPES', ''))
-    )),
-
 ];

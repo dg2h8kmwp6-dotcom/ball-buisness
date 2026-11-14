@@ -102,15 +102,10 @@ class StripeCheckout
             ];
         }
 
-        /** @var list<string> $paymentMethodTypes */
-        $paymentMethodTypes = config('ballpit.payment_method_types', []);
-
-        // When left empty, Stripe automatically offers whichever payment
-        // methods are enabled on the account (card, PayPal, wallets, ...).
-        if ($paymentMethodTypes !== []) {
-            $options['payment_method_types'] = $paymentMethodTypes;
-        }
-
+        // `payment_method_types` is deliberately never sent. Omitting it keeps
+        // Stripe's dynamic payment methods on, so the methods enabled in the
+        // Stripe Dashboard are offered and ordered per customer. To change
+        // what is accepted, use the Dashboard rather than this payload.
         return $options;
     }
 }
